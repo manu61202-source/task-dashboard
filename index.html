@@ -568,6 +568,24 @@
         }
         .pin-change-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,99,10,0.08); }
 
+        /* Category manager */
+        .cat-section { margin-bottom: 16px; }
+        .cat-section-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .cat-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+        .cat-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+            background: var(--bg-input); border-radius: 8px; font-size: 13px;
+        }
+        .cat-item-label { flex: 1; font-weight: 500; }
+        .cat-remove-btn {
+            border: none; background: transparent; color: var(--text-muted); cursor: pointer;
+            font-size: 16px; padding: 2px 6px; border-radius: 4px; transition: all 0.15s;
+        }
+        .cat-remove-btn:hover { background: var(--critique-bg); color: var(--critique); }
+        .cat-add-row { display: flex; gap: 6px; }
+        .cat-add-row input { flex: 1; }
+        .cat-emoji-input { width: 50px; text-align: center; }
+
         /* Responsive */
         @media (max-width: 400px) {
             .header-left h1 { font-size: 24px; }
@@ -603,7 +621,7 @@
         // ============================================
         // CONSTANTS
         // ============================================
-        const CATEGORIES = {
+        const DEFAULT_CATEGORIES = {
             pro: [
                 { id: 'travail', label: 'Travail', emoji: '💼' },
                 { id: 'entretiens', label: 'Entretiens', emoji: '🤝' },
@@ -630,16 +648,18 @@
         // ============================================
         // UTILITIES
         // ============================================
-        function getCatInfo(catId) {
+        function getCatInfo(catId, categories) {
+            const cats = categories || DEFAULT_CATEGORIES;
             for (const scope of ['pro', 'perso']) {
-                const c = CATEGORIES[scope].find(x => x.id === catId);
+                const c = cats[scope].find(x => x.id === catId);
                 if (c) return { ...c, scope };
             }
             return { id: catId, label: catId, emoji: '📌', scope: 'perso' };
         }
 
-        function getTaskScope(catId) {
-            return CATEGORIES.pro.find(c => c.id === catId) ? 'pro' : 'perso';
+        function getTaskScope(catId, categories) {
+            const cats = categories || DEFAULT_CATEGORIES;
+            return cats.pro.find(c => c.id === catId) ? 'pro' : 'perso';
         }
 
         function getDaysUntil(dateStr) {
@@ -776,7 +796,7 @@
         // ============================================
         // TASK MODAL
         // ============================================
-        function TaskModal({ task, tasks, onSubmit, onClose }) {
+        function TaskModal({ task, tasks, onSubmit, onClose, categories }) {
             const [text, setText] = useState(task?.text || '');
             const [detail, setDetail] = useState(task?.detail || '');
             const [category, setCategory] = useState(task?.category || '');
@@ -802,7 +822,7 @@
                     deadline: deadline || null,
                     blocked_by: blockedBy ? parseInt(blockedBy) : null,
                     subtasks: subtasks.filter(s => s.text.trim() !== ''),
-                    scope: getTaskScope(category)
+                    scope: getTaskScope(category, categories)
                 });
             };
 
@@ -828,10 +848,10 @@
                                     <select className="form-input" value={category} onChange={e => setCategory(e.target.value)} required>
                                         <option value="">Choisir...</option>
                                         <optgroup label="💼 Professionnel">
-                                            {CATEGORIES.pro.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+                                            {categories.pro.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
                                         </optgroup>
                                         <optgroup label="🏠 Personnel">
-                                            {CATEGORIES.perso.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+                                            {categories.perso.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
                                         </optgroup>
                                     </select>
                                 </div>
@@ -953,10 +973,90 @@
         }
 
         // ============================================
+        // CATEGORY MANAGER MODAL
+        // ============================================
+        function CategoryManagerModal({ categories, onClose, onSave }) {
+            const [cats, setCats] = useState(JSON.parse(JSON.stringify(categories)));
+            const [newLabel, setNewLabel] = useState({ pro: '', perso: '' });
+            const [newEmoji, setNewEmoji] = useState({ pro: '📌', perso: '📌' });
+            const [saving, setSaving] = useState(false);
+
+            const addCategory = (scope) => {
+                const label = newLabel[scope].trim();
+                if (!label) return;
+                const id = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                if (cats[scope].some(c => c.id === id)) return;
+                setCats(prev => ({ ...prev, [scope]: [...prev[scope], { id, label, emoji: newEmoji[scope] || '📌' }] }));
+                setNewLabel(prev => ({ ...prev, [scope]: '' }));
+                setNewEmoji(prev => ({ ...prev, [scope]: '📌' }));
+            };
+
+            const removeCategory = (scope, id) => {
+                setCats(prev => ({ ...prev, [scope]: prev[scope].filter(c => c.id !== id) }));
+            };
+
+            const handleSave = async () => {
+                setSaving(true);
+                await onSave(cats);
+                setSaving(false);
+                onClose();
+            };
+
+            const renderScope = (scope, title) => (
+                <div className="cat-section">
+                    <div className="cat-section-title">{title}</div>
+                    <div className="cat-list">
+                        {cats[scope].map(c => (
+                            <div key={c.id} className="cat-item">
+                                <span>{c.emoji}</span>
+                                <span className="cat-item-label">{c.label}</span>
+                                <button className="cat-remove-btn" onClick={() => removeCategory(scope, c.id)} title="Supprimer">×</button>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="cat-add-row">
+                        <input
+                            className="form-input cat-emoji-input"
+                            value={newEmoji[scope]}
+                            onChange={e => setNewEmoji(prev => ({ ...prev, [scope]: e.target.value }))}
+                            placeholder="📌"
+                            maxLength={4}
+                        />
+                        <input
+                            className="form-input"
+                            value={newLabel[scope]}
+                            onChange={e => setNewLabel(prev => ({ ...prev, [scope]: e.target.value }))}
+                            placeholder="Nouvelle catégorie..."
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCategory(scope); } }}
+                        />
+                        <button className="btn-submit" style={{ padding: '8px 14px', whiteSpace: 'nowrap' }} onClick={() => addCategory(scope)}>+</button>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+                        <div className="modal-handle" />
+                        <h2>Gérer les catégories</h2>
+                        {renderScope('pro', '💼 Professionnel')}
+                        {renderScope('perso', '🏠 Personnel')}
+                        <div className="modal-btns">
+                            <button className="btn-cancel" onClick={onClose}>Annuler</button>
+                            <button className="btn-submit" onClick={handleSave} disabled={saving}>
+                                {saving ? 'Sauvegarde...' : 'Enregistrer'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ============================================
         // TASK CARD
         // ============================================
-        function TaskCard({ task, tasks, isBlocked, onToggle, onEdit, onDelete, onDragStart, onDragOver, onDragEnd, onDrop }) {
-            const cat = getCatInfo(task.category);
+        function TaskCard({ task, tasks, isBlocked, onToggle, onEdit, onDelete, onDragStart, onDragOver, onDragEnd, onDrop, categories }) {
+            const cat = getCatInfo(task.category, categories);
             const effPri = getEffectivePriority(task);
             const pri = PRIORITIES[effPri];
             const escalated = effPri !== task.priority;
@@ -1027,7 +1127,7 @@
         // ============================================
         // CALENDAR VIEW
         // ============================================
-        function CalendarView({ tasks, onEdit }) {
+        function CalendarView({ tasks, onEdit, categories }) {
             const [currentDate, setCurrentDate] = useState(new Date());
             const [selectedDay, setSelectedDay] = useState(null);
 
@@ -1111,7 +1211,7 @@
                                     <div key={t.id} className="cal-task-item" onClick={() => onEdit(t.id)} style={{ cursor: 'pointer' }}>
                                         <span className="tag" style={{ background: pri.bg, color: pri.color, fontSize: 10, padding: '2px 6px' }}>{pri.emoji}</span>
                                         <span style={{ flex: 1 }}>{t.text}</span>
-                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{getCatInfo(t.category).emoji}</span>
+                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{getCatInfo(t.category, categories).emoji}</span>
                                     </div>
                                 );
                             })}
@@ -1143,6 +1243,8 @@
             const [toast, setToast] = useState(null);
             const [settingsOpen, setSettingsOpen] = useState(false);
             const [pinModal, setPinModal] = useState(false);
+            const [catModal, setCatModal] = useState(false);
+            const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
             const [dragId, setDragId] = useState(null);
             const settingsRef = useRef(null);
 
@@ -1163,6 +1265,28 @@
                         setLoading(false);
                     });
             }, [unlocked]);
+
+            // Load custom categories after unlock
+            useEffect(() => {
+                if (!unlocked) return;
+                supabase.from('app_config').select('value').eq('key', 'custom_categories').single()
+                    .then(({ data }) => {
+                        if (data?.value) {
+                            try { setCategories(typeof data.value === 'string' ? JSON.parse(data.value) : data.value); } catch(e) {}
+                        }
+                    });
+            }, [unlocked]);
+
+            const saveCategories = async (newCats) => {
+                setCategories(newCats);
+                const { data } = await supabase.from('app_config').select('key').eq('key', 'custom_categories').single();
+                if (data) {
+                    await supabase.from('app_config').update({ value: JSON.stringify(newCats) }).eq('key', 'custom_categories');
+                } else {
+                    await supabase.from('app_config').insert({ key: 'custom_categories', value: JSON.stringify(newCats) });
+                }
+                setToast('Catégories mises à jour !');
+            };
 
             // Notifications
             useEffect(() => {
@@ -1241,7 +1365,7 @@
             const toggleFilter = (type, value) => setFilters(prev => ({ ...prev, [type]: prev[type] === value ? null : value }));
 
             // ---- Derived ----
-            const scopeTasks = tasks.filter(t => getTaskScope(t.category) === scope);
+            const scopeTasks = tasks.filter(t => getTaskScope(t.category, categories) === scope);
             const filtered = scopeTasks.filter(t => {
                 if (filters.category && t.category !== filters.category) return false;
                 if (filters.priority && getEffectivePriority(t) !== filters.priority) return false;
@@ -1280,6 +1404,9 @@
                             </button>
                             {settingsOpen && (
                                 <div className="settings-menu">
+                                    <button className="settings-item" onClick={() => { setCatModal(true); setSettingsOpen(false); }}>
+                                        🏷️ Gérer les catégories
+                                    </button>
                                     <button className="settings-item" onClick={() => { setPinModal(true); setSettingsOpen(false); }}>
                                         🔐 Changer le code PIN
                                     </button>
@@ -1318,7 +1445,7 @@
                     <div className="filters">
                         <div className="filter-label">Catégories</div>
                         <div className="filter-row">
-                            {CATEGORIES[scope].map(cat => (
+                            {categories[scope].map(cat => (
                                 <button key={cat.id} className={`filter-chip ${filters.category === cat.id ? 'active' : ''}`}
                                     onClick={() => toggleFilter('category', cat.id)}
                                 >{cat.emoji} {cat.label}</button>
@@ -1355,10 +1482,11 @@
                                 key={task.id} task={task} tasks={tasks} isBlocked={isBlocked}
                                 onToggle={toggleDone} onEdit={(id) => setModal(id)} onDelete={handleDelete}
                                 onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDrop={onDrop}
+                                categories={categories}
                             />
                         ))
                     ) : (
-                        <CalendarView tasks={filtered} onEdit={(id) => setModal(id)} />
+                        <CalendarView tasks={filtered} onEdit={(id) => setModal(id)} categories={categories} />
                     )}
 
                     <button className="fab" onClick={() => setModal('add')} title="Nouvelle tâche">+</button>
@@ -1367,11 +1495,16 @@
                         <TaskModal
                             task={typeof modal === 'number' ? tasks.find(t => t.id === modal) : null}
                             tasks={tasks} onSubmit={handleSubmit} onClose={() => setModal(null)}
+                            categories={categories}
                         />
                     )}
 
                     {pinModal && (
                         <PinChangeModal onClose={() => setPinModal(false)} onChanged={() => setToast('Code PIN modifié !')} />
+                    )}
+
+                    {catModal && (
+                        <CategoryManagerModal categories={categories} onClose={() => setCatModal(false)} onSave={saveCategories} />
                     )}
                 </div>
             );
