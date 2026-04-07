@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TaskFlow</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✓</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #FAFAF7;
+            --bg-card: #FFFFFF;
+            --bg-hover: #F5F5F0;
+            --bg-input: #F7F7F4;
+            --accent: #E8630A;
+            --accent-light: #FFF3EB;
+            --accent-hover: #D45A09;
+            --text: #1A1A1A;
+            --text-secondary: #7A7A72;
+            --text-muted: #ACACAA;
+            --border: #E8E8E3;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+            --shadow-lg: 0 12px 40px rgba(0,0,0,0.1);
+            --radius: 14px;
+            --radius-sm: 10px;
+            --radius-xs: 7px;
+            --pro-color: #2563EB;
+            --pro-bg: #EFF6FF;
+            --perso-color: #059669;
+            --perso-bg: #ECFDF5;
+            --critique: #DC2626;
+            --critique-bg: #FEF2F2;
+            --urgent: #EA580C;
+            --urgent-bg: #FFF7ED;
+            --moyen: #CA8A04;
+            --moyen-bg: #FEFCE8;
+            --faible: #16A34A;
+            --faible-bg: #F0FDF4;
+            --done-color: #10B981;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes checkPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+        @keyframes overlayIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ====== PIN SCREEN ====== */
+        .pin-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: linear-gradient(145deg, #FAFAF7 0%, #F0EDE6 50%, #FFF3EB 100%);
+        }
+        .pin-card {
+            background: var(--bg-card);
+            border-radius: 24px;
+            padding: 48px 36px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: var(--shadow-lg);
+            animation: scaleIn 0.4s ease-out;
+            text-align: center;
+        }
+        .pin-logo {
+            font-size: 44px;
+            font-weight: 800;
+            color: var(--accent);
+            letter-spacing: -1.5px;
+            margin-bottom: 6px;
+        }
+        .pin-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 36px;
+        }
+        .pin-dots {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin-bottom: 32px;
+        }
+        .pin-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: transparent;
+            transition: all 0.15s ease;
+        }
+        .pin-dot.filled {
+            background: var(--accent);
+            border-color: var(--accent);
+            transform: scale(1.1);
+        }
+        .pin-dot.error {
+            border-color: var(--critique);
+            background: var(--critique);
+        }
+        .pin-keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 260px;
+            margin: 0 auto;
+        }
+        .pin-key {
+            height: 58px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            font-size: 22px;
+            font-weight: 600;
+            font-family: inherit;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pin-key:hover { background: var(--bg-input); border-color: #D0D0CB; }
+        .pin-key:active { transform: scale(0.95); background: var(--accent-light); border-color: var(--accent); }
+        .pin-key.empty { border: none; cursor: default; background: transparent; }
+        .pin-key.empty:hover { background: transparent; }
+        .pin-key.empty:active { transform: none; }
+        .pin-key.backspace { font-size: 18px; color: var(--text-secondary); }
+        .pin-error-msg {
+            color: var(--critique);
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 16px;
+            min-height: 20px;
+        }
+        .pin-shake { animation: shake 0.4s ease-out; }
+
+        /* ====== APP SHELL ====== */
+        .app { max-width: 640px; margin: 0 auto; padding: 0 16px 100px; min-height: 100vh; }
+
+        /* Header */
+        .header {
+            padding: 24px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .header-left h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.8px;
+        }
+        .header-left .stats {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-top: 2px;
+        }
+        .header-right { display: flex; gap: 8px; align-items: center; }
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.15s;
+            color: var(--text-secondary);
+        }
+        .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+        /* Alert banner */
+        .alert-banner {
+            background: var(--critique-bg);
+            border: 1.5px solid #FECACA;
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--critique);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Scope Toggle */
+        .scope-toggle {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            padding: 4px;
+        }
+        .scope-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: var(--radius-xs);
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        .scope-btn.active-pro { background: var(--pro-bg); color: var(--pro-color); box-shadow: var(--shadow-sm); }
+        .scope-btn.active-perso { background: var(--perso-bg); color: var(--perso-color); box-shadow: var(--shadow-sm); }
+
+        /* Progress bar */
+        .progress-wrap {
+            height: 5px;
+            background: var(--border);
+            border-radius: 3px;
+            margin-bottom: 18px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+            background: linear-gradient(90deg, var(--accent), #F59E0B);
+        }
+
+        /* Filters */
+        .filters { margin-bottom: 20px; }
+        .filter-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+        }
+        .filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+        .filter-chip {
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1.5px solid var(--border);
+            font-size: 12px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+        .filter-chip.active { background: var(--text); color: white; border-color: var(--text); }
+
+        /* View toggle */
+        .view-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .view-toggle-row .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .view-btns { display: flex; gap: 4px; background: var(--bg-input); border-radius: var(--radius-xs); padding: 3px; }
+        .view-btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        .view-btn.active { background: var(--bg-card); color: var(--text); box-shadow: var(--shadow-sm); }
+
+        /* Task card */
+        .task-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 10px;
+            border: 1.5px solid var(--border);
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            transition: all 0.2s;
+            animation: fadeIn 0.3s ease-out;
+            cursor: default;
+            position: relative;
+        }
+        .task-card:hover { border-color: #D0D0CB; box-shadow: var(--shadow-sm); }
+        .task-card.overdue { border-color: #FCA5A5; background: #FFFBFB; }
+        .task-card.done { opacity: 0.5; }
+        .task-card.blocked { opacity: 0.45; }
+        .task-card.dragging { opacity: 0.4; border-color: var(--accent); box-shadow: var(--shadow-lg); }
+        .task-card.drag-over { border-color: var(--accent); border-style: dashed; }
+
+        .drag-handle {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            cursor: grab;
+            color: var(--text-muted);
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            user-select: none;
+            flex-shrink: 0;
+            padding: 4px 0;
+            opacity: 0.4;
+            transition: opacity 0.15s;
+        }
+        .task-card:hover .drag-handle { opacity: 0.8; }
+        .drag-handle:active { cursor: grabbing; }
+
+        .checkbox {
+            width: 22px;
+            height: 22px;
+            border-radius: 7px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+            transition: all 0.2s;
+        }
+        .checkbox:hover { border-color: var(--accent); }
+        .checkbox.checked { background: var(--done-color); border-color: var(--done-color); animation: checkPop 0.3s ease-out; }
+        .checkbox.checked svg { stroke: white; }
+        .checkbox.blocked-cb { cursor: not-allowed; opacity: 0.5; }
+
+        .task-content { flex: 1; min-width: 0; }
+        .task-title { font-size: 14px; font-weight: 500; color: var(--text); word-break: break-word; line-height: 1.4; }
+        .task-title.done-text { text-decoration: line-through; color: var(--text-muted); }
+        .task-detail { font-size: 12px; color: var(--text-secondary); margin-top: 3px; line-height: 1.4; }
+        .task-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+        .tag { font-size: 11px; padding: 3px 10px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
+        .tag-category { background: var(--bg-input); color: var(--text-secondary); }
+
+        .subtask-progress { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); font-weight: 500; }
+        .subtask-bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; max-width: 100px; }
+        .subtask-bar { height: 100%; background: var(--done-color); border-radius: 2px; transition: width 0.3s ease; }
+
+        .task-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+        .task-action-btn {
+            width: 28px; height: 28px; border: 1px solid transparent; border-radius: 7px;
+            background: transparent; cursor: pointer; display: flex; align-items: center;
+            justify-content: center; font-size: 13px; color: var(--text-muted); transition: all 0.15s;
+        }
+        .task-action-btn:hover { background: var(--bg-input); color: var(--text); border-color: var(--border); }
+        .task-action-btn.delete:hover { background: var(--critique-bg); color: var(--critique); border-color: #FECACA; }
+
+        /* Empty state */
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); animation: fadeIn 0.4s ease-out; }
+        .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+        .empty-state .msg { font-size: 15px; font-weight: 500; }
+
+        /* FAB */
+        .fab {
+            position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px;
+            border-radius: 50%; background: var(--accent); color: white; border: none;
+            font-size: 28px; font-weight: 300; cursor: pointer;
+            box-shadow: 0 6px 24px rgba(232,99,10,0.35);
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; z-index: 100;
+        }
+        .fab:hover { background: var(--accent-hover); transform: scale(1.05); box-shadow: 0 8px 30px rgba(232,99,10,0.45); }
+        .fab:active { transform: scale(0.95); }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(4px); display: flex; align-items: flex-end;
+            justify-content: center; z-index: 200; animation: overlayIn 0.2s ease-out;
+        }
+        @media (min-width: 500px) { .modal-overlay { align-items: center; } }
+        .modal {
+            background: var(--bg-card); border-radius: 20px 20px 0 0; padding: 28px 24px 32px;
+            width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
+            box-shadow: var(--shadow-lg); animation: modalIn 0.3s ease-out;
+        }
+        @media (min-width: 500px) { .modal { border-radius: 20px; } }
+        .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+        @media (min-width: 500px) { .modal-handle { display: none; } }
+        .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 24px; color: var(--text); letter-spacing: -0.3px; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .form-input {
+            width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-xs);
+            font-size: 14px; font-family: inherit; color: var(--text); background: var(--bg-input);
+            outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,99,10,0.08); }
+        .form-input::placeholder { color: var(--text-muted); }
+        textarea.form-input { min-height: 70px; resize: vertical; }
+        select.form-input { cursor: pointer; }
+        .form-row { display: flex; gap: 10px; }
+        .form-row > .form-group { flex: 1; }
+
+        .subtask-editor { margin-top: 8px; }
+        .subtask-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--bg-input); }
+        .subtask-item .mini-check {
+            width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--border);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: all 0.15s;
+        }
+        .subtask-item .mini-check.checked { background: var(--done-color); border-color: var(--done-color); }
+        .subtask-item input { flex: 1; border: none; outline: none; font-size: 13px; font-family: inherit; color: var(--text); background: transparent; }
+        .subtask-item input.st-done { text-decoration: line-through; color: var(--text-muted); }
+        .subtask-item .remove-st {
+            width: 20px; height: 20px; border: none; background: transparent; cursor: pointer;
+            color: var(--text-muted); font-size: 14px; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+        }
+        .subtask-item .remove-st:hover { color: var(--critique); background: var(--critique-bg); }
+        .add-subtask-btn { display: flex; align-items: center; gap: 6px; padding: 8px 0; border: none; background: transparent; color: var(--accent); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; }
+        .add-subtask-btn:hover { opacity: 0.8; }
+
+        .modal-btns { display: flex; gap: 10px; margin-top: 24px; }
+        .btn-cancel {
+            flex: 1; padding: 13px; border-radius: var(--radius-sm); border: 1.5px solid var(--border);
+            background: var(--bg-card); color: var(--text-secondary); font-size: 14px; font-weight: 600;
+            font-family: inherit; cursor: pointer; transition: all 0.15s;
+        }
+        .btn-cancel:hover { border-color: var(--text-secondary); color: var(--text); }
+        .btn-submit {
+            flex: 1; padding: 13px; border-radius: var(--radius-sm); border: none;
+            background: var(--accent); color: white; font-size: 14px; font-weight: 600;
+            font-family: inherit; cursor: pointer; transition: all 0.15s;
+        }
+        .btn-submit:hover { background: var(--accent-hover); }
+        .btn-submit:active { transform: scale(0.98); }
+
+        /* Calendar */
+        .calendar { animation: fadeIn 0.3s ease-out; }
+        .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .cal-nav { display: flex; align-items: center; gap: 12px; }
+        .cal-nav-btn {
+            width: 32px; height: 32px; border: 1.5px solid var(--border); border-radius: 8px;
+            background: var(--bg-card); cursor: pointer; display: flex; align-items: center;
+            justify-content: center; font-size: 14px; color: var(--text-secondary); transition: all 0.15s;
+        }
+        .cal-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .cal-month { font-size: 16px; font-weight: 700; color: var(--text); }
+        .cal-today-btn {
+            padding: 6px 14px; border: 1.5px solid var(--border); border-radius: 20px;
+            background: var(--bg-card); font-size: 12px; font-weight: 600; font-family: inherit;
+            color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
+        }
+        .cal-today-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .cal-day-name { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 0; }
+        .cal-day {
+            aspect-ratio: 1; display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start; padding: 6px 2px; border-radius: var(--radius-xs);
+            font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer; transition: all 0.15s;
+        }
+        .cal-day:hover { background: var(--bg-input); }
+        .cal-day.other-month { color: var(--text-muted); opacity: 0.4; }
+        .cal-day.today { background: var(--accent-light); color: var(--accent); font-weight: 700; }
+        .cal-dots { display: flex; gap: 3px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
+        .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+        .cal-day-tasks {
+            background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+            padding: 12px; margin-top: 16px; margin-bottom: 16px; animation: fadeIn 0.2s ease-out;
+        }
+        .cal-day-tasks h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+        .cal-task-item { padding: 8px 0; border-bottom: 1px solid var(--bg-input); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .cal-task-item:last-child { border-bottom: none; }
+
+        /* Settings menu */
+        .settings-menu {
+            position: absolute; top: 52px; right: 0; background: var(--bg-card);
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+            padding: 8px; box-shadow: var(--shadow-lg); min-width: 200px;
+            z-index: 150; animation: fadeIn 0.15s ease-out;
+        }
+        .settings-item {
+            display: block; width: 100%; padding: 10px 12px; border: none; background: transparent;
+            font-size: 13px; font-weight: 500; font-family: inherit; color: var(--text);
+            cursor: pointer; border-radius: 6px; text-align: left; transition: background 0.1s;
+        }
+        .settings-item:hover { background: var(--bg-input); }
+        .settings-item.danger { color: var(--critique); }
+        .settings-item.danger:hover { background: var(--critique-bg); }
+
+        /* Toast */
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: var(--text); color: white; padding: 12px 20px; border-radius: var(--radius-sm);
+            font-size: 13px; font-weight: 500; box-shadow: var(--shadow-lg); z-index: 300;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        /* Loading */
+        .loading-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+        .loader { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+        /* PIN change modal */
+        .pin-change-input {
+            width: 100%; padding: 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 24px; font-family: inherit; color: var(--text); background: var(--bg-input);
+            outline: none; text-align: center; letter-spacing: 12px; font-weight: 700;
+            transition: border-color 0.2s;
+        }
+        .pin-change-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,99,10,0.08); }
+
+        /* Responsive */
+        @media (max-width: 400px) {
+            .header-left h1 { font-size: 24px; }
+            .task-card { padding: 14px 12px; gap: 10px; }
+            .modal { padding: 24px 20px 28px; }
+            .form-row { flex-direction: column; gap: 0; }
+            .pin-card { padding: 36px 24px; }
+            .pin-key { height: 52px; font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef, useMemo } = React;
+
+        // ============================================
+        // SUPABASE (data sync only, no auth)
+        // ============================================
+        const SUPABASE_URL = 'https://krtkwxowuwqmqijcsbvv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtydGt3eG93dXdxbXFpamNzYnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNTU4NTcsImV4cCI6MjA4ODkzMTg1N30.oizsOjv6swlb9ipiqJOvWUKnwc3u2djOsfQRTkHUyh4';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ============================================
+        // CONSTANTS
+        // ============================================
+        const CATEGORIES = {
+            pro: [
+                { id: 'travail', label: 'Travail', emoji: '💼' },
+                { id: 'entretiens', label: 'Entretiens', emoji: '🤝' },
+                { id: 'admin', label: 'Admin', emoji: '📋' }
+            ],
+            perso: [
+                { id: 'appart', label: 'Appart', emoji: '🏠' },
+                { id: 'italien', label: 'Italien', emoji: '🇮🇹' },
+                { id: 'demenagement', label: 'Déménagement', emoji: '📦' },
+                { id: 'app_perso', label: 'App Perso', emoji: '💻' },
+                { id: 'sport', label: 'Sport', emoji: '🏋️' },
+                { id: 'vinted', label: 'Vinted', emoji: '👗' },
+                { id: 'achats', label: 'Achats', emoji: '🛒' }
+            ]
+        };
+
+        const PRIORITIES = {
+            critique: { label: 'Critique', emoji: '🔴', color: 'var(--critique)', bg: 'var(--critique-bg)' },
+            urgent: { label: 'Urgent', emoji: '🟠', color: 'var(--urgent)', bg: 'var(--urgent-bg)' },
+            moyen: { label: 'Moyen', emoji: '🟡', color: 'var(--moyen)', bg: 'var(--moyen-bg)' },
+            faible: { label: 'Faible', emoji: '🟢', color: 'var(--faible)', bg: 'var(--faible-bg)' }
+        };
+
+        // ============================================
+        // UTILITIES
+        // ============================================
+        function getCatInfo(catId) {
+            for (const scope of ['pro', 'perso']) {
+                const c = CATEGORIES[scope].find(x => x.id === catId);
+                if (c) return { ...c, scope };
+            }
+            return { id: catId, label: catId, emoji: '📌', scope: 'perso' };
+        }
+
+        function getTaskScope(catId) {
+            return CATEGORIES.pro.find(c => c.id === catId) ? 'pro' : 'perso';
+        }
+
+        function getDaysUntil(dateStr) {
+            if (!dateStr) return Infinity;
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            return Math.floor((new Date(dateStr + 'T00:00:00') - today) / 86400000);
+        }
+
+        function formatDeadline(dateStr) {
+            if (!dateStr) return '';
+            const d = getDaysUntil(dateStr);
+            if (d < 0) return `En retard (${Math.abs(d)}j)`;
+            if (d === 0) return "Aujourd'hui";
+            if (d === 1) return 'Demain';
+            return `Dans ${d}j`;
+        }
+
+        function getEffectivePriority(task) {
+            if (!task.deadline) return task.priority;
+            const d = getDaysUntil(task.deadline);
+            const order = { critique: 0, urgent: 1, moyen: 2, faible: 3 };
+            if (d < 0) return order.critique < order[task.priority] ? 'critique' : task.priority;
+            if (d === 0) return order.urgent < order[task.priority] ? 'urgent' : task.priority;
+            return task.priority;
+        }
+
+        function priNum(p) { return { critique: 0, urgent: 1, moyen: 2, faible: 3 }[p] ?? 4; }
+
+        function sortTasks(list) {
+            return [...list].sort((a, b) => {
+                if (a.done !== b.done) return a.done ? 1 : -1;
+                if ((a.position || 0) !== (b.position || 0)) return (a.position || 0) - (b.position || 0);
+                const pa = priNum(getEffectivePriority(a)), pb = priNum(getEffectivePriority(b));
+                if (pa !== pb) return pa - pb;
+                if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+                if (a.deadline) return -1;
+                if (b.deadline) return 1;
+                return b.id - a.id;
+            });
+        }
+
+        // ============================================
+        // SVG ICONS
+        // ============================================
+        const CheckIcon = () => (
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="2,6 5,9 10,3" />
+            </svg>
+        );
+        const MiniCheckIcon = () => (
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="2,6 5,9 10,3" />
+            </svg>
+        );
+
+        // ============================================
+        // PIN SCREEN
+        // ============================================
+        function PinScreen({ onUnlock }) {
+            const [pin, setPin] = useState('');
+            const [error, setError] = useState(false);
+            const [checking, setChecking] = useState(false);
+
+            const handleKey = async (digit) => {
+                if (checking) return;
+                setError(false);
+                const newPin = pin + digit;
+                setPin(newPin);
+
+                if (newPin.length === 6) {
+                    setChecking(true);
+                    // Verify PIN against Supabase
+                    const { data } = await supabase
+                        .from('app_config')
+                        .select('value')
+                        .eq('key', 'pin')
+                        .single();
+
+                    if (data && data.value === newPin) {
+                        onUnlock();
+                    } else {
+                        setError(true);
+                        setTimeout(() => { setPin(''); setError(false); }, 600);
+                    }
+                    setChecking(false);
+                }
+            };
+
+            const handleBackspace = () => {
+                if (checking) return;
+                setPin(prev => prev.slice(0, -1));
+                setError(false);
+            };
+
+            // Keyboard support
+            useEffect(() => {
+                const handler = (e) => {
+                    if (e.key >= '0' && e.key <= '9') handleKey(e.key);
+                    if (e.key === 'Backspace') handleBackspace();
+                };
+                window.addEventListener('keydown', handler);
+                return () => window.removeEventListener('keydown', handler);
+            }, [pin, checking]);
+
+            return (
+                <div className="pin-container">
+                    <div className={`pin-card ${error ? 'pin-shake' : ''}`}>
+                        <div className="pin-logo">TaskFlow</div>
+                        <div className="pin-subtitle">Entre ton code pour accéder à tes tâches</div>
+
+                        <div className="pin-dots">
+                            {[0,1,2,3,4,5].map(i => (
+                                <div key={i} className={`pin-dot ${i < pin.length ? (error ? 'error filled' : 'filled') : ''}`} />
+                            ))}
+                        </div>
+
+                        <div className="pin-keypad">
+                            {[1,2,3,4,5,6,7,8,9].map(n => (
+                                <button key={n} className="pin-key" onClick={() => handleKey(String(n))}>{n}</button>
+                            ))}
+                            <div className="pin-key empty" />
+                            <button className="pin-key" onClick={() => handleKey('0')}>0</button>
+                            <button className="pin-key backspace" onClick={handleBackspace}>&#9003;</button>
+                        </div>
+
+                        <div className="pin-error-msg">
+                            {error ? 'Code incorrect' : ''}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ============================================
+        // TASK MODAL
+        // ============================================
+        function TaskModal({ task, tasks, onSubmit, onClose }) {
+            const [text, setText] = useState(task?.text || '');
+            const [detail, setDetail] = useState(task?.detail || '');
+            const [category, setCategory] = useState(task?.category || '');
+            const [priority, setPriority] = useState(task?.priority || '');
+            const [deadline, setDeadline] = useState(task?.deadline || '');
+            const [blockedBy, setBlockedBy] = useState(task?.blocked_by?.toString() || '');
+            const [subtasks, setSubtasks] = useState(task?.subtasks || []);
+            const newSubRef = useRef(null);
+
+            const addSubtask = () => {
+                const newSt = { id: Date.now(), text: '', done: false };
+                setSubtasks(prev => [...prev, newSt]);
+                setTimeout(() => newSubRef.current?.focus(), 50);
+            };
+            const updateSubtask = (id, updates) => setSubtasks(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+            const removeSubtask = (id) => setSubtasks(prev => prev.filter(s => s.id !== id));
+
+            const handle = (e) => {
+                e.preventDefault();
+                if (!text || !category || !priority) return;
+                onSubmit({
+                    text, detail, category, priority,
+                    deadline: deadline || null,
+                    blocked_by: blockedBy ? parseInt(blockedBy) : null,
+                    subtasks: subtasks.filter(s => s.text.trim() !== ''),
+                    scope: getTaskScope(category)
+                });
+            };
+
+            const blockerTasks = tasks.filter(t => !t.done && t.id !== task?.id);
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-handle" />
+                        <h2>{task ? 'Modifier la tâche' : 'Nouvelle tâche'}</h2>
+                        <form onSubmit={handle}>
+                            <div className="form-group">
+                                <label className="form-label">Tâche *</label>
+                                <input className="form-input" value={text} onChange={e => setText(e.target.value)} placeholder="Qu'est-ce que tu dois faire ?" required />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Détails</label>
+                                <textarea className="form-input" value={detail} onChange={e => setDetail(e.target.value)} placeholder="Notes, liens, contexte..." />
+                            </div>
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Catégorie *</label>
+                                    <select className="form-input" value={category} onChange={e => setCategory(e.target.value)} required>
+                                        <option value="">Choisir...</option>
+                                        <optgroup label="💼 Professionnel">
+                                            {CATEGORIES.pro.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+                                        </optgroup>
+                                        <optgroup label="🏠 Personnel">
+                                            {CATEGORIES.perso.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+                                        </optgroup>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Priorité *</label>
+                                    <select className="form-input" value={priority} onChange={e => setPriority(e.target.value)} required>
+                                        <option value="">Choisir...</option>
+                                        {Object.entries(PRIORITIES).map(([k, v]) => (
+                                            <option key={k} value={k}>{v.emoji} {v.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Deadline</label>
+                                    <input type="date" className="form-input" value={deadline} onChange={e => setDeadline(e.target.value)} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Bloquée par</label>
+                                    <select className="form-input" value={blockedBy} onChange={e => setBlockedBy(e.target.value)}>
+                                        <option value="">Aucune</option>
+                                        {blockerTasks.map(t => <option key={t.id} value={t.id}>{t.text.substring(0, 30)}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Sous-tâches</label>
+                                <div className="subtask-editor">
+                                    {subtasks.map((st, i) => (
+                                        <div key={st.id} className="subtask-item">
+                                            <div className={`mini-check ${st.done ? 'checked' : ''}`} onClick={() => updateSubtask(st.id, { done: !st.done })}>
+                                                {st.done && <MiniCheckIcon />}
+                                            </div>
+                                            <input
+                                                ref={i === subtasks.length - 1 ? newSubRef : null}
+                                                className={st.done ? 'st-done' : ''}
+                                                value={st.text}
+                                                onChange={e => updateSubtask(st.id, { text: e.target.value })}
+                                                placeholder="Sous-tâche..."
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubtask(); } }}
+                                            />
+                                            <button type="button" className="remove-st" onClick={() => removeSubtask(st.id)}>×</button>
+                                        </div>
+                                    ))}
+                                    <button type="button" className="add-subtask-btn" onClick={addSubtask}>+ Ajouter une sous-tâche</button>
+                                </div>
+                            </div>
+                            <div className="modal-btns">
+                                <button type="button" className="btn-cancel" onClick={onClose}>Annuler</button>
+                                <button type="submit" className="btn-submit">{task ? 'Enregistrer' : 'Ajouter'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // ============================================
+        // PIN CHANGE MODAL
+        // ============================================
+        function PinChangeModal({ onClose, onChanged }) {
+            const [newPin, setNewPin] = useState('');
+            const [confirm, setConfirm] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (newPin.length !== 6) { setError('Le code doit faire 6 chiffres'); return; }
+                if (newPin !== confirm) { setError('Les codes ne correspondent pas'); return; }
+
+                await supabase.from('app_config').update({ value: newPin }).eq('key', 'pin');
+                onChanged();
+                onClose();
+            };
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+                        <div className="modal-handle" />
+                        <h2>Changer le code PIN</h2>
+                        <form onSubmit={handleSubmit}>
+                            <div className="form-group">
+                                <label className="form-label">Nouveau code (6 chiffres)</label>
+                                <input
+                                    className="pin-change-input"
+                                    type="tel"
+                                    maxLength={6}
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={newPin}
+                                    onChange={e => { setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
+                                    placeholder="••••••"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Confirmer le code</label>
+                                <input
+                                    className="pin-change-input"
+                                    type="tel"
+                                    maxLength={6}
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={confirm}
+                                    onChange={e => { setConfirm(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
+                                    placeholder="••••••"
+                                />
+                            </div>
+                            {error && <div style={{ color: 'var(--critique)', fontSize: 13, fontWeight: 500, marginBottom: 10 }}>{error}</div>}
+                            <div className="modal-btns">
+                                <button type="button" className="btn-cancel" onClick={onClose}>Annuler</button>
+                                <button type="submit" className="btn-submit">Enregistrer</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // ============================================
+        // TASK CARD
+        // ============================================
+        function TaskCard({ task, tasks, isBlocked, onToggle, onEdit, onDelete, onDragStart, onDragOver, onDragEnd, onDrop }) {
+            const cat = getCatInfo(task.category);
+            const effPri = getEffectivePriority(task);
+            const pri = PRIORITIES[effPri];
+            const escalated = effPri !== task.priority;
+            const blocked = isBlocked(task);
+            const overdue = task.deadline && getDaysUntil(task.deadline) < 0 && !task.done;
+            const dueToday = task.deadline && getDaysUntil(task.deadline) === 0;
+            const subtasks = task.subtasks || [];
+            const stDone = subtasks.filter(s => s.done).length;
+
+            let cardClass = 'task-card';
+            if (overdue) cardClass += ' overdue';
+            if (task.done) cardClass += ' done';
+            if (blocked) cardClass += ' blocked';
+
+            return (
+                <div
+                    className={cardClass}
+                    draggable
+                    onDragStart={(e) => onDragStart(e, task.id)}
+                    onDragOver={(e) => onDragOver(e, task.id)}
+                    onDragEnd={onDragEnd}
+                    onDrop={(e) => onDrop(e, task.id)}
+                >
+                    <div className="drag-handle" title="Glisser pour réordonner">⋮⋮</div>
+                    <div
+                        className={`checkbox ${task.done ? 'checked' : ''} ${blocked ? 'blocked-cb' : ''}`}
+                        onClick={() => !blocked && onToggle(task)}
+                    >
+                        {task.done && <CheckIcon />}
+                    </div>
+                    <div className="task-content">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span className={`task-title ${task.done ? 'done-text' : ''}`}>{task.text}</span>
+                            {blocked && <span style={{ fontSize: 14 }}>🔒</span>}
+                        </div>
+                        {task.detail && <div className="task-detail">{task.detail}</div>}
+                        <div className="task-tags">
+                            <span className="tag tag-category">{cat.emoji} {cat.label}</span>
+                            <span className="tag" style={{ background: pri.bg, color: pri.color }}>
+                                {pri.emoji} {pri.label}{escalated ? ' ⬆' : ''}
+                            </span>
+                            {task.deadline && (
+                                <span className="tag" style={{
+                                    background: overdue ? 'var(--critique-bg)' : dueToday ? 'var(--urgent-bg)' : 'var(--faible-bg)',
+                                    color: overdue ? 'var(--critique)' : dueToday ? 'var(--urgent)' : 'var(--faible)'
+                                }}>
+                                    {formatDeadline(task.deadline)}
+                                </span>
+                            )}
+                        </div>
+                        {subtasks.length > 0 && (
+                            <div className="subtask-progress">
+                                <div className="subtask-bar-wrap">
+                                    <div className="subtask-bar" style={{ width: `${(stDone / subtasks.length) * 100}%` }} />
+                                </div>
+                                <span>{stDone}/{subtasks.length}</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="task-actions">
+                        <button className="task-action-btn" onClick={() => onEdit(task.id)} title="Modifier">✏️</button>
+                        <button className="task-action-btn delete" onClick={() => onDelete(task.id)} title="Supprimer">✕</button>
+                    </div>
+                </div>
+            );
+        }
+
+        // ============================================
+        // CALENDAR VIEW
+        // ============================================
+        function CalendarView({ tasks, onEdit }) {
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [selectedDay, setSelectedDay] = useState(null);
+
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDow = (firstDay.getDay() + 6) % 7;
+            const daysInMonth = lastDay.getDate();
+
+            const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+            const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+
+            const tasksByDate = useMemo(() => {
+                const map = {};
+                tasks.filter(t => t.deadline && !t.done).forEach(t => {
+                    if (!map[t.deadline]) map[t.deadline] = [];
+                    map[t.deadline].push(t);
+                });
+                return map;
+            }, [tasks]);
+
+            const cells = [];
+            const prevMonthDays = new Date(year, month, 0).getDate();
+            for (let i = startDow - 1; i >= 0; i--) cells.push({ day: prevMonthDays - i, otherMonth: true, date: null });
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const cellDate = new Date(year, month, d); cellDate.setHours(0, 0, 0, 0);
+                cells.push({ day: d, otherMonth: false, date: dateStr, isToday: cellDate.getTime() === today.getTime() });
+            }
+            const remaining = 7 - (cells.length % 7);
+            if (remaining < 7) for (let i = 1; i <= remaining; i++) cells.push({ day: i, otherMonth: true, date: null });
+
+            const selectedTasks = selectedDay ? (tasksByDate[selectedDay] || []) : [];
+
+            return (
+                <div className="calendar">
+                    <div className="cal-header">
+                        <div className="cal-nav">
+                            <button className="cal-nav-btn" onClick={() => setCurrentDate(new Date(year, month - 1, 1))}>‹</button>
+                            <span className="cal-month">{monthNames[month]} {year}</span>
+                            <button className="cal-nav-btn" onClick={() => setCurrentDate(new Date(year, month + 1, 1))}>›</button>
+                        </div>
+                        <button className="cal-today-btn" onClick={() => setCurrentDate(new Date())}>Aujourd'hui</button>
+                    </div>
+                    <div className="cal-grid">
+                        {dayNames.map(d => <div key={d} className="cal-day-name">{d}</div>)}
+                        {cells.map((cell, i) => {
+                            const dateTasks = cell.date ? (tasksByDate[cell.date] || []) : [];
+                            return (
+                                <div key={i}
+                                    className={`cal-day ${cell.otherMonth ? 'other-month' : ''} ${cell.isToday ? 'today' : ''}`}
+                                    onClick={() => cell.date && setSelectedDay(selectedDay === cell.date ? null : cell.date)}
+                                    style={{ background: selectedDay === cell.date ? 'var(--accent-light)' : undefined }}
+                                >
+                                    {cell.day}
+                                    {dateTasks.length > 0 && (
+                                        <div className="cal-dots">
+                                            {dateTasks.slice(0, 3).map((t, j) => (
+                                                <div key={j} className="cal-dot" style={{ background: PRIORITIES[getEffectivePriority(t)]?.color || 'var(--text-muted)' }} />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {selectedDay && (
+                        <div className="cal-day-tasks">
+                            <h3>
+                                {new Date(selectedDay + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                {' '}({selectedTasks.length} tâche{selectedTasks.length > 1 ? 's' : ''})
+                            </h3>
+                            {selectedTasks.length === 0 ? (
+                                <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Aucune tâche ce jour</div>
+                            ) : selectedTasks.map(t => {
+                                const pri = PRIORITIES[getEffectivePriority(t)];
+                                return (
+                                    <div key={t.id} className="cal-task-item" onClick={() => onEdit(t.id)} style={{ cursor: 'pointer' }}>
+                                        <span className="tag" style={{ background: pri.bg, color: pri.color, fontSize: 10, padding: '2px 6px' }}>{pri.emoji}</span>
+                                        <span style={{ flex: 1 }}>{t.text}</span>
+                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{getCatInfo(t.category).emoji}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ============================================
+        // TOAST
+        // ============================================
+        function Toast({ message, onDone }) {
+            useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, [onDone]);
+            return <div className="toast">{message}</div>;
+        }
+
+        // ============================================
+        // MAIN APP
+        // ============================================
+        function App() {
+            const [unlocked, setUnlocked] = useState(false);
+            const [tasks, setTasks] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [scope, setScope] = useState('pro');
+            const [filters, setFilters] = useState({ category: null, priority: null });
+            const [modal, setModal] = useState(null);
+            const [view, setView] = useState('list');
+            const [toast, setToast] = useState(null);
+            const [settingsOpen, setSettingsOpen] = useState(false);
+            const [pinModal, setPinModal] = useState(false);
+            const [dragId, setDragId] = useState(null);
+            const settingsRef = useRef(null);
+
+            // Close settings on outside click
+            useEffect(() => {
+                const handler = (e) => { if (settingsRef.current && !settingsRef.current.contains(e.target)) setSettingsOpen(false); };
+                document.addEventListener('mousedown', handler);
+                return () => document.removeEventListener('mousedown', handler);
+            }, []);
+
+            // Load tasks after unlock
+            useEffect(() => {
+                if (!unlocked) return;
+                setLoading(true);
+                supabase.from('tasks').select('*').order('position', { ascending: true })
+                    .then(({ data }) => {
+                        if (data) setTasks(data.map(t => ({ ...t, subtasks: t.subtasks || [] })));
+                        setLoading(false);
+                    });
+            }, [unlocked]);
+
+            // Notifications
+            useEffect(() => {
+                if (!unlocked || !('Notification' in window)) return;
+                Notification.requestPermission();
+                const check = () => {
+                    tasks.filter(t => !t.done && t.deadline).forEach(t => {
+                        if (getDaysUntil(t.deadline) === 0 && Notification.permission === 'granted') {
+                            new Notification('TaskFlow — Deadline aujourd\'hui !', { body: t.text });
+                        }
+                    });
+                };
+                check();
+                const interval = setInterval(check, 3600000);
+                return () => clearInterval(interval);
+            }, [unlocked, tasks]);
+
+            // ---- Task ops ----
+            const isBlocked = useCallback((task) => {
+                if (!task.blocked_by) return false;
+                const blocker = tasks.find(t => t.id === task.blocked_by);
+                return blocker && !blocker.done;
+            }, [tasks]);
+
+            const toggleDone = async (task) => {
+                const newDone = !task.done;
+                setTasks(prev => prev.map(t => t.id === task.id ? { ...t, done: newDone } : t));
+                await supabase.from('tasks').update({ done: newDone, updated_at: new Date().toISOString() }).eq('id', task.id);
+                if (newDone) setToast('Tâche terminée !');
+            };
+
+            const handleDelete = async (id) => {
+                setTasks(prev => prev.filter(t => t.id !== id));
+                await supabase.from('tasks').delete().eq('id', id);
+                setToast('Tâche supprimée');
+            };
+
+            const handleSubmit = async (formData) => {
+                if (typeof modal === 'number') {
+                    setTasks(prev => prev.map(t => t.id === modal ? { ...t, ...formData } : t));
+                    await supabase.from('tasks').update({ ...formData, updated_at: new Date().toISOString() }).eq('id', modal);
+                    setToast('Tâche modifiée');
+                } else {
+                    const maxPos = tasks.length > 0 ? Math.max(...tasks.map(t => t.position || 0)) + 1 : 0;
+                    const newTask = { ...formData, done: false, position: maxPos };
+                    const { data } = await supabase.from('tasks').insert(newTask).select().single();
+                    if (data) {
+                        setTasks(prev => [...prev, { ...data, subtasks: data.subtasks || [] }]);
+                        setToast('Tâche ajoutée !');
+                    }
+                }
+                setModal(null);
+            };
+
+            // ---- Drag & Drop ----
+            const onDragStart = (e, id) => { setDragId(id); e.dataTransfer.effectAllowed = 'move'; e.currentTarget.classList.add('dragging'); };
+            const onDragOver = (e, id) => { e.preventDefault(); if (dragId && dragId !== id) e.currentTarget.classList.add('drag-over'); };
+            const onDragEnd = (e) => { setDragId(null); e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over')); };
+            const onDrop = async (e, targetId) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('drag-over');
+                if (!dragId || dragId === targetId) return;
+                const sorted = sortTasks(scopeTasks);
+                const dragIndex = sorted.findIndex(t => t.id === dragId);
+                const targetIndex = sorted.findIndex(t => t.id === targetId);
+                if (dragIndex === -1 || targetIndex === -1) return;
+                const newOrder = [...sorted];
+                const [moved] = newOrder.splice(dragIndex, 1);
+                newOrder.splice(targetIndex, 0, moved);
+                const updates = newOrder.map((t, i) => ({ id: t.id, position: i }));
+                setTasks(prev => prev.map(t => { const u = updates.find(u => u.id === t.id); return u ? { ...t, position: u.position } : t; }));
+                for (const u of updates) await supabase.from('tasks').update({ position: u.position }).eq('id', u.id);
+                setDragId(null);
+            };
+
+            const toggleFilter = (type, value) => setFilters(prev => ({ ...prev, [type]: prev[type] === value ? null : value }));
+
+            // ---- Derived ----
+            const scopeTasks = tasks.filter(t => getTaskScope(t.category) === scope);
+            const filtered = scopeTasks.filter(t => {
+                if (filters.category && t.category !== filters.category) return false;
+                if (filters.priority && getEffectivePriority(t) !== filters.priority) return false;
+                return true;
+            });
+            const sorted = sortTasks(filtered);
+            const doneCount = filtered.filter(t => t.done).length;
+            const pct = filtered.length > 0 ? (doneCount / filtered.length) * 100 : 0;
+            const overdueTasks = tasks.filter(t => !t.done && t.deadline && getDaysUntil(t.deadline) < 0);
+            const todayTasks = tasks.filter(t => !t.done && t.deadline && getDaysUntil(t.deadline) === 0);
+
+            // ---- PIN screen ----
+            if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
+
+            // ---- Loading ----
+            if (loading) return (
+                <div className="loading-screen">
+                    <div className="loader" />
+                    <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>Chargement...</div>
+                </div>
+            );
+
+            // ---- Main app ----
+            return (
+                <div className="app">
+                    {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+
+                    <div className="header">
+                        <div className="header-left">
+                            <h1>TaskFlow</h1>
+                            <div className="stats">{doneCount}/{filtered.length} complétées</div>
+                        </div>
+                        <div className="header-right" style={{ position: 'relative' }} ref={settingsRef}>
+                            <button className="icon-btn" onClick={() => setSettingsOpen(!settingsOpen)} title="Paramètres">
+                                ⚙️
+                            </button>
+                            {settingsOpen && (
+                                <div className="settings-menu">
+                                    <button className="settings-item" onClick={() => { setPinModal(true); setSettingsOpen(false); }}>
+                                        🔐 Changer le code PIN
+                                    </button>
+                                    <button className="settings-item" onClick={() => { setUnlocked(false); setSettingsOpen(false); }}>
+                                        🚪 Verrouiller
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {(overdueTasks.length > 0 || todayTasks.length > 0) && (
+                        <div className="alert-banner">
+                            <span>⚠️</span>
+                            <span>
+                                {overdueTasks.length > 0 && `${overdueTasks.length} en retard`}
+                                {overdueTasks.length > 0 && todayTasks.length > 0 && ' · '}
+                                {todayTasks.length > 0 && `${todayTasks.length} à faire aujourd'hui`}
+                            </span>
+                        </div>
+                    )}
+
+                    <div className="scope-toggle">
+                        {[['pro', '💼 Pro'], ['perso', '🏠 Perso']].map(([key, label]) => (
+                            <button key={key}
+                                className={`scope-btn ${scope === key ? (key === 'pro' ? 'active-pro' : 'active-perso') : ''}`}
+                                onClick={() => { setScope(key); setFilters({ category: null, priority: null }); }}
+                            >{label}</button>
+                        ))}
+                    </div>
+
+                    <div className="progress-wrap">
+                        <div className="progress-bar" style={{ width: `${pct}%` }} />
+                    </div>
+
+                    <div className="filters">
+                        <div className="filter-label">Catégories</div>
+                        <div className="filter-row">
+                            {CATEGORIES[scope].map(cat => (
+                                <button key={cat.id} className={`filter-chip ${filters.category === cat.id ? 'active' : ''}`}
+                                    onClick={() => toggleFilter('category', cat.id)}
+                                >{cat.emoji} {cat.label}</button>
+                            ))}
+                        </div>
+                        <div className="filter-label">Priorités</div>
+                        <div className="filter-row">
+                            {Object.entries(PRIORITIES).map(([key, val]) => (
+                                <button key={key} className={`filter-chip ${filters.priority === key ? 'active' : ''}`}
+                                    onClick={() => toggleFilter('priority', key)}
+                                >{val.emoji} {val.label}</button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="view-toggle-row">
+                        <span className="section-title">
+                            {view === 'list' ? `${sorted.length} tâche${sorted.length > 1 ? 's' : ''}` : 'Calendrier'}
+                        </span>
+                        <div className="view-btns">
+                            <button className={`view-btn ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}>Liste</button>
+                            <button className={`view-btn ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}>Calendrier</button>
+                        </div>
+                    </div>
+
+                    {view === 'list' ? (
+                        sorted.length === 0 ? (
+                            <div className="empty-state">
+                                <div className="emoji">✨</div>
+                                <div className="msg">Aucune tâche ici</div>
+                            </div>
+                        ) : sorted.map(task => (
+                            <TaskCard
+                                key={task.id} task={task} tasks={tasks} isBlocked={isBlocked}
+                                onToggle={toggleDone} onEdit={(id) => setModal(id)} onDelete={handleDelete}
+                                onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDrop={onDrop}
+                            />
+                        ))
+                    ) : (
+                        <CalendarView tasks={filtered} onEdit={(id) => setModal(id)} />
+                    )}
+
+                    <button className="fab" onClick={() => setModal('add')} title="Nouvelle tâche">+</button>
+
+                    {modal !== null && (
+                        <TaskModal
+                            task={typeof modal === 'number' ? tasks.find(t => t.id === modal) : null}
+                            tasks={tasks} onSubmit={handleSubmit} onClose={() => setModal(null)}
+                        />
+                    )}
+
+                    {pinModal && (
+                        <PinChangeModal onClose={() => setPinModal(false)} onChanged={() => setToast('Code PIN modifié !')} />
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
