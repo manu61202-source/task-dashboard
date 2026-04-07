@@ -374,6 +374,26 @@
         .task-card:hover .drag-handle { opacity: 0.8; }
         .drag-handle:active { cursor: grabbing; }
 
+        /* Mobile move buttons (replaces drag on touch) */
+        .move-btns {
+            display: none;
+            flex-direction: column;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        .move-btn {
+            border: none; background: var(--bg-input); color: var(--text-muted);
+            width: 28px; height: 24px; border-radius: 6px; font-size: 12px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s; padding: 0;
+        }
+        .move-btn:active { background: var(--accent-light); color: var(--accent); transform: scale(0.92); }
+
+        @media (max-width: 500px) {
+            .drag-handle { display: none; }
+            .move-btns { display: flex; }
+        }
+
         .checkbox {
             width: 22px;
             height: 22px;
@@ -403,6 +423,16 @@
         .subtask-progress { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); font-weight: 500; }
         .subtask-bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; max-width: 100px; }
         .subtask-bar { height: 100%; background: var(--done-color); border-radius: 2px; transition: width 0.3s ease; }
+
+        .subtask-inline-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; animation: fadeIn 0.2s ease-out; }
+        .subtask-inline-item {
+            display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary);
+            cursor: pointer; padding: 4px 0; user-select: none;
+        }
+        .subtask-inline-item input[type="checkbox"] {
+            width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
+        }
+        .subtask-inline-item.st-done span { text-decoration: line-through; color: var(--text-muted); }
 
         .task-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
         .task-action-btn {
@@ -569,12 +599,18 @@
         .pin-change-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,99,10,0.08); }
 
         /* Category manager */
-        .cat-section { margin-bottom: 16px; }
-        .cat-section-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .cat-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+        .cat-scope-toggle { display: flex; gap: 4px; background: var(--bg-input); border-radius: 8px; padding: 3px; margin-bottom: 16px; }
+        .cat-scope-btn {
+            flex: 1; padding: 8px 12px; border: none; border-radius: 6px; font-size: 13px;
+            font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.2s;
+            background: transparent; color: var(--text-secondary);
+        }
+        .cat-scope-btn.active { background: var(--bg-card); color: var(--text); box-shadow: var(--shadow-sm); }
+        .cat-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
         .cat-item {
-            display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+            display: flex; align-items: center; gap: 10px; padding: 10px 12px;
             background: var(--bg-input); border-radius: 8px; font-size: 13px;
+            animation: fadeIn 0.2s ease-out;
         }
         .cat-item-label { flex: 1; font-weight: 500; }
         .cat-remove-btn {
@@ -582,9 +618,11 @@
             font-size: 16px; padding: 2px 6px; border-radius: 4px; transition: all 0.15s;
         }
         .cat-remove-btn:hover { background: var(--critique-bg); color: var(--critique); }
-        .cat-add-row { display: flex; gap: 6px; }
-        .cat-add-row input { flex: 1; }
-        .cat-emoji-input { width: 50px; text-align: center; }
+        .cat-add-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .cat-add-row input { min-width: 0; }
+        .cat-add-row .cat-name-input { flex: 1; min-width: 120px; }
+        .cat-emoji-input { width: 48px; text-align: center; flex-shrink: 0; }
+        .cat-empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 16px 0; }
 
         /* Responsive */
         @media (max-width: 400px) {
@@ -977,21 +1015,24 @@
         // ============================================
         function CategoryManagerModal({ categories, onClose, onSave }) {
             const [cats, setCats] = useState(JSON.parse(JSON.stringify(categories)));
-            const [newLabel, setNewLabel] = useState({ pro: '', perso: '' });
-            const [newEmoji, setNewEmoji] = useState({ pro: '📌', perso: '📌' });
+            const [scope, setScope] = useState('pro');
+            const [newLabel, setNewLabel] = useState('');
+            const [newEmoji, setNewEmoji] = useState('📌');
             const [saving, setSaving] = useState(false);
+            const inputRef = useRef(null);
 
-            const addCategory = (scope) => {
-                const label = newLabel[scope].trim();
+            const addCategory = () => {
+                const label = newLabel.trim();
                 if (!label) return;
                 const id = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
                 if (cats[scope].some(c => c.id === id)) return;
-                setCats(prev => ({ ...prev, [scope]: [...prev[scope], { id, label, emoji: newEmoji[scope] || '📌' }] }));
-                setNewLabel(prev => ({ ...prev, [scope]: '' }));
-                setNewEmoji(prev => ({ ...prev, [scope]: '📌' }));
+                setCats(prev => ({ ...prev, [scope]: [...prev[scope], { id, label, emoji: newEmoji || '📌' }] }));
+                setNewLabel('');
+                setNewEmoji('📌');
+                setTimeout(() => inputRef.current?.focus(), 50);
             };
 
-            const removeCategory = (scope, id) => {
+            const removeCategory = (id) => {
                 setCats(prev => ({ ...prev, [scope]: prev[scope].filter(c => c.id !== id) }));
             };
 
@@ -1002,46 +1043,48 @@
                 onClose();
             };
 
-            const renderScope = (scope, title) => (
-                <div className="cat-section">
-                    <div className="cat-section-title">{title}</div>
-                    <div className="cat-list">
-                        {cats[scope].map(c => (
-                            <div key={c.id} className="cat-item">
-                                <span>{c.emoji}</span>
-                                <span className="cat-item-label">{c.label}</span>
-                                <button className="cat-remove-btn" onClick={() => removeCategory(scope, c.id)} title="Supprimer">×</button>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="cat-add-row">
-                        <input
-                            className="form-input cat-emoji-input"
-                            value={newEmoji[scope]}
-                            onChange={e => setNewEmoji(prev => ({ ...prev, [scope]: e.target.value }))}
-                            placeholder="📌"
-                            maxLength={4}
-                        />
-                        <input
-                            className="form-input"
-                            value={newLabel[scope]}
-                            onChange={e => setNewLabel(prev => ({ ...prev, [scope]: e.target.value }))}
-                            placeholder="Nouvelle catégorie..."
-                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCategory(scope); } }}
-                        />
-                        <button className="btn-submit" style={{ padding: '8px 14px', whiteSpace: 'nowrap' }} onClick={() => addCategory(scope)}>+</button>
-                    </div>
-                </div>
-            );
-
             return (
                 <div className="modal-overlay" onClick={onClose}>
-                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
                         <div className="modal-handle" />
                         <h2>Gérer les catégories</h2>
-                        {renderScope('pro', '💼 Professionnel')}
-                        {renderScope('perso', '🏠 Personnel')}
-                        <div className="modal-btns">
+
+                        <div className="cat-scope-toggle">
+                            <button className={`cat-scope-btn ${scope === 'pro' ? 'active' : ''}`} onClick={() => setScope('pro')}>💼 Pro</button>
+                            <button className={`cat-scope-btn ${scope === 'perso' ? 'active' : ''}`} onClick={() => setScope('perso')}>🏠 Perso</button>
+                        </div>
+
+                        <div className="cat-list">
+                            {cats[scope].length === 0 && <div className="cat-empty">Aucune catégorie</div>}
+                            {cats[scope].map(c => (
+                                <div key={c.id} className="cat-item">
+                                    <span>{c.emoji}</span>
+                                    <span className="cat-item-label">{c.label}</span>
+                                    <button className="cat-remove-btn" onClick={() => removeCategory(c.id)} title="Supprimer">×</button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="cat-add-row">
+                            <input
+                                className="form-input cat-emoji-input"
+                                value={newEmoji}
+                                onChange={e => setNewEmoji(e.target.value)}
+                                placeholder="📌"
+                                maxLength={4}
+                            />
+                            <input
+                                className="form-input cat-name-input"
+                                ref={inputRef}
+                                value={newLabel}
+                                onChange={e => setNewLabel(e.target.value)}
+                                placeholder="Nouvelle catégorie..."
+                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCategory(); } }}
+                            />
+                            <button className="btn-submit" style={{ padding: '8px 14px' }} onClick={addCategory}>+</button>
+                        </div>
+
+                        <div className="modal-btns" style={{ marginTop: 16 }}>
                             <button className="btn-cancel" onClick={onClose}>Annuler</button>
                             <button className="btn-submit" onClick={handleSave} disabled={saving}>
                                 {saving ? 'Sauvegarde...' : 'Enregistrer'}
@@ -1055,7 +1098,7 @@
         // ============================================
         // TASK CARD
         // ============================================
-        function TaskCard({ task, tasks, isBlocked, onToggle, onEdit, onDelete, onDragStart, onDragOver, onDragEnd, onDrop, categories }) {
+        function TaskCard({ task, tasks, isBlocked, onToggle, onEdit, onDelete, onDragStart, onDragOver, onDragEnd, onDrop, categories, onMoveUp, onMoveDown, isFirst, isLast, onToggleSubtask }) {
             const cat = getCatInfo(task.category, categories);
             const effPri = getEffectivePriority(task);
             const pri = PRIORITIES[effPri];
@@ -1065,6 +1108,7 @@
             const dueToday = task.deadline && getDaysUntil(task.deadline) === 0;
             const subtasks = task.subtasks || [];
             const stDone = subtasks.filter(s => s.done).length;
+            const [showSubs, setShowSubs] = useState(false);
 
             let cardClass = 'task-card';
             if (overdue) cardClass += ' overdue';
@@ -1081,6 +1125,10 @@
                     onDrop={(e) => onDrop(e, task.id)}
                 >
                     <div className="drag-handle" title="Glisser pour réordonner">⋮⋮</div>
+                    <div className="move-btns">
+                        <button className="move-btn" onClick={() => onMoveUp(task.id)} disabled={isFirst} title="Monter">▲</button>
+                        <button className="move-btn" onClick={() => onMoveDown(task.id)} disabled={isLast} title="Descendre">▼</button>
+                    </div>
                     <div
                         className={`checkbox ${task.done ? 'checked' : ''} ${blocked ? 'blocked-cb' : ''}`}
                         onClick={() => !blocked && onToggle(task)}
@@ -1108,11 +1156,24 @@
                             )}
                         </div>
                         {subtasks.length > 0 && (
-                            <div className="subtask-progress">
-                                <div className="subtask-bar-wrap">
-                                    <div className="subtask-bar" style={{ width: `${(stDone / subtasks.length) * 100}%` }} />
+                            <div>
+                                <div className="subtask-progress" onClick={(e) => { e.stopPropagation(); setShowSubs(!showSubs); }} style={{ cursor: 'pointer' }}>
+                                    <div className="subtask-bar-wrap">
+                                        <div className="subtask-bar" style={{ width: `${(stDone / subtasks.length) * 100}%` }} />
+                                    </div>
+                                    <span>{stDone}/{subtasks.length}</span>
+                                    <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>{showSubs ? '▲' : '▼'}</span>
                                 </div>
-                                <span>{stDone}/{subtasks.length}</span>
+                                {showSubs && (
+                                    <div className="subtask-inline-list">
+                                        {subtasks.map(s => (
+                                            <label key={s.id} className={`subtask-inline-item ${s.done ? 'st-done' : ''}`} onClick={e => e.stopPropagation()}>
+                                                <input type="checkbox" checked={s.done} onChange={() => onToggleSubtask(task.id, s.id)} />
+                                                <span>{s.text}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1247,6 +1308,7 @@
             const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
             const [dragId, setDragId] = useState(null);
             const settingsRef = useRef(null);
+            const notifiedRef = useRef(new Set());
 
             // Close settings on outside click
             useEffect(() => {
@@ -1288,14 +1350,15 @@
                 setToast('Catégories mises à jour !');
             };
 
-            // Notifications
+            // Notifications (max 1 par tâche par session)
             useEffect(() => {
                 if (!unlocked || !('Notification' in window)) return;
                 Notification.requestPermission();
                 const check = () => {
                     tasks.filter(t => !t.done && t.deadline).forEach(t => {
-                        if (getDaysUntil(t.deadline) === 0 && Notification.permission === 'granted') {
+                        if (getDaysUntil(t.deadline) === 0 && Notification.permission === 'granted' && !notifiedRef.current.has(t.id)) {
                             new Notification('TaskFlow — Deadline aujourd\'hui !', { body: t.text });
+                            notifiedRef.current.add(t.id);
                         }
                     });
                 };
@@ -1341,6 +1404,15 @@
                 setModal(null);
             };
 
+            // ---- Toggle subtask from card ----
+            const toggleSubtask = async (taskId, subtaskId) => {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+                const newSubs = (task.subtasks || []).map(s => s.id === subtaskId ? { ...s, done: !s.done } : s);
+                setTasks(prev => prev.map(t => t.id === taskId ? { ...t, subtasks: newSubs } : t));
+                await supabase.from('tasks').update({ subtasks: newSubs, updated_at: new Date().toISOString() }).eq('id', taskId);
+            };
+
             // ---- Drag & Drop ----
             const onDragStart = (e, id) => { setDragId(id); e.dataTransfer.effectAllowed = 'move'; e.currentTarget.classList.add('dragging'); };
             const onDragOver = (e, id) => { e.preventDefault(); if (dragId && dragId !== id) e.currentTarget.classList.add('drag-over'); };
@@ -1360,6 +1432,29 @@
                 setTasks(prev => prev.map(t => { const u = updates.find(u => u.id === t.id); return u ? { ...t, position: u.position } : t; }));
                 for (const u of updates) await supabase.from('tasks').update({ position: u.position }).eq('id', u.id);
                 setDragId(null);
+            };
+
+            // ---- Mobile Move Up/Down ----
+            const onMoveUp = async (id) => {
+                const sorted = sortTasks(filtered);
+                const idx = sorted.findIndex(t => t.id === id);
+                if (idx <= 0) return;
+                const a = sorted[idx], b = sorted[idx - 1];
+                const posA = a.position, posB = b.position;
+                setTasks(prev => prev.map(t => t.id === a.id ? { ...t, position: posB } : t.id === b.id ? { ...t, position: posA } : t));
+                await supabase.from('tasks').update({ position: posB }).eq('id', a.id);
+                await supabase.from('tasks').update({ position: posA }).eq('id', b.id);
+            };
+
+            const onMoveDown = async (id) => {
+                const sorted = sortTasks(filtered);
+                const idx = sorted.findIndex(t => t.id === id);
+                if (idx === -1 || idx >= sorted.length - 1) return;
+                const a = sorted[idx], b = sorted[idx + 1];
+                const posA = a.position, posB = b.position;
+                setTasks(prev => prev.map(t => t.id === a.id ? { ...t, position: posB } : t.id === b.id ? { ...t, position: posA } : t));
+                await supabase.from('tasks').update({ position: posB }).eq('id', a.id);
+                await supabase.from('tasks').update({ position: posA }).eq('id', b.id);
             };
 
             const toggleFilter = (type, value) => setFilters(prev => ({ ...prev, [type]: prev[type] === value ? null : value }));
@@ -1410,7 +1505,7 @@
                                     <button className="settings-item" onClick={() => { setPinModal(true); setSettingsOpen(false); }}>
                                         🔐 Changer le code PIN
                                     </button>
-                                    <button className="settings-item" onClick={() => { setUnlocked(false); setSettingsOpen(false); }}>
+                                    <button className="settings-item" onClick={() => { setUnlocked(false); setSettingsOpen(false); notifiedRef.current.clear(); }}>
                                         🚪 Verrouiller
                                     </button>
                                 </div>
@@ -1477,12 +1572,15 @@
                                 <div className="emoji">✨</div>
                                 <div className="msg">Aucune tâche ici</div>
                             </div>
-                        ) : sorted.map(task => (
+                        ) : sorted.map((task, idx) => (
                             <TaskCard
                                 key={task.id} task={task} tasks={tasks} isBlocked={isBlocked}
                                 onToggle={toggleDone} onEdit={(id) => setModal(id)} onDelete={handleDelete}
                                 onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDrop={onDrop}
                                 categories={categories}
+                                onMoveUp={onMoveUp} onMoveDown={onMoveDown}
+                                isFirst={idx === 0} isLast={idx === sorted.length - 1}
+                                onToggleSubtask={toggleSubtask}
                             />
                         ))
                     ) : (
