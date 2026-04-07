@@ -584,18 +584,21 @@
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+    <script>
+        // Initialize Supabase BEFORE Babel loads (regular script, guaranteed execution order)
+        window.SUPABASE_CLIENT = window.supabase.createClient(
+            'https://krtkwxowuwqmqijcsbvv.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtydGt3eG93dXdxbXFpamNzYnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNTU4NTcsImV4cCI6MjA4ODkzMTg1N30.oizsOjv6swlb9ipiqJOvWUKnwc3u2djOsfQRTkHUyh4'
+        );
+    </script>
+
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef, useMemo } = React;
-
-        // ============================================
-        // SUPABASE (data sync only, no auth)
-        // ============================================
-        const SUPABASE_URL = 'https://krtkwxowuwqmqijcsbvv.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtydGt3eG93dXdxbXFpamNzYnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNTU4NTcsImV4cCI6MjA4ODkzMTg1N30.oizsOjv6swlb9ipiqJOvWUKnwc3u2djOsfQRTkHUyh4';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase = window.SUPABASE_CLIENT;
 
         // ============================================
         // CONSTANTS
