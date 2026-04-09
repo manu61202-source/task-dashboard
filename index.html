@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TaskFlow</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✓</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23E8630A'/><stop offset='100%25' stop-color='%23F59E0B'/></linearGradient></defs><rect rx='22' width='100' height='100' fill='url(%23g)'/><path d='M28 52l16 16 28-32' stroke='white' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -108,10 +108,8 @@
             text-align: center;
         }
         .pin-logo {
-            font-size: 44px;
-            font-weight: 800;
-            color: var(--accent);
-            letter-spacing: -1.5px;
+            display: flex;
+            justify-content: center;
             margin-bottom: 6px;
         }
         .pin-subtitle {
@@ -425,9 +423,10 @@
 
         /* Custom drag styles */
         .task-card.custom-dragging {
-            opacity: 0.92; border-color: var(--accent); box-shadow: var(--shadow-lg);
+            opacity: 1; border-color: var(--accent); box-shadow: var(--shadow-lg);
             background: var(--accent-light); z-index: 50; position: relative;
         }
+        .swipe-container:has(.custom-dragging) .swipe-actions { display: none !important; }
         .drag-placeholder {
             border: 2px dashed var(--accent); border-radius: var(--radius);
             background: var(--accent-light); opacity: 0.4; margin-bottom: 10px;
@@ -550,8 +549,14 @@
             background: var(--bg-card); border-radius: 20px 20px 0 0; padding: 28px 24px 32px;
             width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
             box-shadow: var(--shadow-lg); animation: modalIn 0.3s ease-out;
+            box-sizing: border-box;
         }
         @media (min-width: 500px) { .modal { border-radius: 20px; } }
+        @media (max-width: 500px) {
+            .modal { width: 100vw; max-width: 100vw; overflow-x: hidden; display: flex; flex-direction: column; }
+            .modal-scroll-content { flex: 1; overflow-y: auto; min-height: 0; }
+            .modal-btns.sticky-bottom { flex-shrink: 0; position: sticky; bottom: 0; background: var(--bg-card); padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--bg-input); }
+        }
         .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
         @media (min-width: 500px) { .modal-handle { display: none; } }
         .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 24px; color: var(--text); letter-spacing: -0.3px; }
@@ -560,7 +565,7 @@
         .form-input {
             width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-xs);
             font-size: 14px; font-family: inherit; color: var(--text); background: var(--bg-input);
-            outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;
         }
         .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,99,10,0.08); }
         .form-input::placeholder { color: var(--text-muted); }
@@ -889,6 +894,22 @@
             </svg>
         );
 
+        const TaskFlowLogo = ({ size = 44 }) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: size * 0.2 }}>
+                <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#E8630A" />
+                            <stop offset="100%" stopColor="#F59E0B" />
+                        </linearGradient>
+                    </defs>
+                    <rect rx="22" width="100" height="100" fill="url(#logoGrad)" />
+                    <path d="M28 52l16 16 28-32" stroke="white" strokeWidth="10" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span style={{ fontSize: size * 0.75, fontWeight: 800, letterSpacing: -1.5, background: 'linear-gradient(135deg, #E8630A, #F59E0B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>TaskFlow</span>
+            </div>
+        );
+
         // ============================================
         // PIN SCREEN
         // ============================================
@@ -941,7 +962,7 @@
             return (
                 <div className="pin-container">
                     <div className={`pin-card ${error ? 'pin-shake' : ''}`}>
-                        <div className="pin-logo">TaskFlow</div>
+                        <div className="pin-logo"><TaskFlowLogo size={44} /></div>
                         <div className="pin-subtitle">Entre ton code pour accéder à tes tâches</div>
 
                         <div className="pin-dots">
@@ -1074,7 +1095,7 @@
                                     <button type="button" className="add-subtask-btn" onClick={addSubtask}>+ Ajouter une sous-tâche</button>
                                 </div>
                             </div>
-                            <div className="modal-btns">
+                            <div className="modal-btns sticky-bottom">
                                 <button type="button" className="btn-cancel" onClick={onClose}>Annuler</button>
                                 <button type="submit" className="btn-submit">{task ? 'Enregistrer' : 'Ajouter'}</button>
                             </div>
@@ -1177,7 +1198,36 @@
             const [saving, setSaving] = useState(false);
             const [showEmojiPicker, setShowEmojiPicker] = useState(false);
             const [confirmRemove, setConfirmRemove] = useState(null);
+            const [editingId, setEditingId] = useState(null);
+            const [editLabel, setEditLabel] = useState('');
+            const [editEmoji, setEditEmoji] = useState('');
+            const [editEmojiPicker, setEditEmojiPicker] = useState(false);
             const inputRef = useRef(null);
+            const editInputRef = useRef(null);
+
+            const startEdit = (c) => {
+                setEditingId(c.id);
+                setEditLabel(c.label);
+                setEditEmoji(c.emoji);
+                setEditEmojiPicker(false);
+                setTimeout(() => editInputRef.current?.focus(), 50);
+            };
+
+            const saveEdit = () => {
+                if (!editLabel.trim()) { cancelEdit(); return; }
+                setCats(prev => ({
+                    ...prev,
+                    [scope]: prev[scope].map(c => c.id === editingId ? { ...c, label: editLabel.trim(), emoji: editEmoji } : c)
+                }));
+                cancelEdit();
+            };
+
+            const cancelEdit = () => {
+                setEditingId(null);
+                setEditLabel('');
+                setEditEmoji('');
+                setEditEmojiPicker(false);
+            };
 
             const addCategory = () => {
                 const label = newLabel.trim();
@@ -1217,9 +1267,37 @@
                             {cats[scope].length === 0 && <div className="cat-empty">Aucune catégorie</div>}
                             {cats[scope].map(c => (
                                 <div key={c.id} className="cat-item">
-                                    <span>{c.emoji}</span>
-                                    <span className="cat-item-label">{c.label}</span>
-                                    <button className="cat-remove-btn" onClick={e => { e.stopPropagation(); setConfirmRemove(c); }} title="Supprimer">×</button>
+                                    {editingId === c.id ? (
+                                        <React.Fragment>
+                                            <div className="emoji-picker-wrap" style={{ position: 'relative' }}>
+                                                <button className="emoji-picker-btn" type="button" style={{ width: 36, height: 36, fontSize: 16 }} onClick={() => setEditEmojiPicker(!editEmojiPicker)}>{editEmoji}</button>
+                                                {editEmojiPicker && (
+                                                    <div className="emoji-picker-dropdown" style={{ top: 40 }}>
+                                                        {EMOJI_LIST.map(em => (
+                                                            <button key={em} type="button" onClick={() => { setEditEmoji(em); setEditEmojiPicker(false); }}>{em}</button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <input
+                                                ref={editInputRef}
+                                                className="form-input"
+                                                value={editLabel}
+                                                onChange={e => setEditLabel(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveEdit(); } if (e.key === 'Escape') cancelEdit(); }}
+                                                style={{ flex: 1, padding: '6px 10px', fontSize: 13 }}
+                                            />
+                                            <button className="cat-remove-btn" onClick={saveEdit} title="Valider" style={{ color: 'var(--done-color)' }}>✓</button>
+                                            <button className="cat-remove-btn" onClick={cancelEdit} title="Annuler">×</button>
+                                        </React.Fragment>
+                                    ) : (
+                                        <React.Fragment>
+                                            <span>{c.emoji}</span>
+                                            <span className="cat-item-label">{c.label}</span>
+                                            <button className="cat-remove-btn" onClick={() => startEdit(c)} title="Modifier" style={{ color: 'var(--text-muted)' }}>✏️</button>
+                                            <button className="cat-remove-btn" onClick={e => { e.stopPropagation(); setConfirmRemove(c); }} title="Supprimer">×</button>
+                                        </React.Fragment>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -1274,7 +1352,7 @@
         // ============================================
         // TASK CARD
         // ============================================
-        function TaskCard({ task, tasks, isBlocked, onToggle, onEdit, onDelete, onCustomDragStart, categories, onMoveUp, onMoveDown, isFirst, isLast, onToggleSubtask }) {
+        function TaskCard({ task, tasks, isBlocked, onToggle, onEdit, onDelete, onCustomDragStart, categories, onMoveUp, onMoveDown, isFirst, isLast, onToggleSubtask, isDraggingRef }) {
             const cat = getCatInfo(task.category, categories);
             const effPri = getEffectivePriority(task);
             const pri = PRIORITIES[effPri];
@@ -1286,16 +1364,18 @@
             const stDone = subtasks.filter(s => s.done).length;
             const [showSubs, setShowSubs] = useState(false);
             const [swipeX, setSwipeX] = useState(0);
-            const touchRef = useRef({ startX: 0, startY: 0, swiping: false });
+            const touchRef = useRef({ startX: 0, startY: 0, swiping: false, active: false });
 
             const isMobile = () => window.innerWidth <= 500;
+            const isDragging = () => isDraggingRef && isDraggingRef.current;
 
             const onTouchStart = (e) => {
-                if (!isMobile()) return;
+                if (!isMobile() || isDragging()) { touchRef.current.active = false; return; }
                 const t = e.touches[0];
-                touchRef.current = { startX: t.clientX, startY: t.clientY, swiping: false };
+                touchRef.current = { startX: t.clientX, startY: t.clientY, swiping: false, active: true };
             };
             const onTouchMove = (e) => {
+                if (!touchRef.current.active || isDragging()) return;
                 const t = e.touches[0];
                 const dx = t.clientX - touchRef.current.startX;
                 const dy = t.clientY - touchRef.current.startY;
@@ -1308,9 +1388,11 @@
                 }
             };
             const onTouchEnd = () => {
+                if (!touchRef.current.active) return;
                 if (swipeX < -50) setSwipeX(-140);
                 else setSwipeX(0);
                 touchRef.current.swiping = false;
+                touchRef.current.active = false;
             };
 
             let cardClass = 'task-card';
@@ -1559,7 +1641,7 @@
             const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
             const [confirmDelete, setConfirmDelete] = useState(null);
             const settingsRef = useRef(null);
-            const notifiedRef = useRef(new Set());
+            const isDraggingRef = useRef(false);
 
             // Close settings on outside click
             useEffect(() => {
@@ -1601,17 +1683,23 @@
                 setToast('Catégories mises à jour !');
             };
 
-            // Notifications (max 1 par tâche par session)
+            // Notifications (max 1 par jour, couvre retard + aujourd'hui, persiste via localStorage)
             useEffect(() => {
                 if (!unlocked || !('Notification' in window)) return;
                 Notification.requestPermission();
                 const check = () => {
-                    tasks.filter(t => !t.done && t.deadline).forEach(t => {
-                        if (getDaysUntil(t.deadline) === 0 && Notification.permission === 'granted' && !notifiedRef.current.has(t.id)) {
-                            new Notification('TaskFlow — Deadline aujourd\'hui !', { body: t.text });
-                            notifiedRef.current.add(t.id);
-                        }
-                    });
+                    if (Notification.permission !== 'granted') return;
+                    const today = new Date().toDateString();
+                    if (localStorage.getItem('lastNotifDate') === today) return;
+                    const withDeadline = tasks.filter(t => !t.done && t.deadline);
+                    const overdue = withDeadline.filter(t => getDaysUntil(t.deadline) < 0).length;
+                    const dueToday = withDeadline.filter(t => getDaysUntil(t.deadline) === 0).length;
+                    if (overdue + dueToday === 0) return;
+                    const parts = [];
+                    if (overdue > 0) parts.push(`${overdue} tâche${overdue > 1 ? 's' : ''} en retard`);
+                    if (dueToday > 0) parts.push(`${dueToday} tâche${dueToday > 1 ? 's' : ''} pour aujourd'hui`);
+                    new Notification('TaskFlow — Rappel', { body: parts.join(', ') });
+                    localStorage.setItem('lastNotifDate', today);
                 };
                 check();
                 const interval = setInterval(check, 3600000);
@@ -1682,6 +1770,7 @@
                 container.style.zIndex = '50';
 
                 const allContainers = Array.from(document.querySelectorAll('.swipe-container[data-task-id]'));
+                isDraggingRef.current = true;
                 dragRef.current = { id, startY: clientY, el: container, card, cards: allContainers, targetId: null };
 
                 const onMove = (ev) => {
@@ -1732,6 +1821,7 @@
                         }
                     }
                     dragRef.current.id = null;
+                    isDraggingRef.current = false;
                 };
 
                 document.addEventListener('mousemove', onMove);
@@ -1836,7 +1926,7 @@
 
                     <div className="header">
                         <div className="header-left">
-                            <h1>TaskFlow</h1>
+                            <TaskFlowLogo size={28} />
                             <div className="stats">{doneCount}/{catFiltered.length} complétées</div>
                         </div>
                         <div className="header-right" style={{ position: 'relative' }} ref={settingsRef}>
@@ -1851,7 +1941,7 @@
                                     <button className="settings-item" onClick={() => { setPinModal(true); setSettingsOpen(false); }}>
                                         🔐 Changer le code PIN
                                     </button>
-                                    <button className="settings-item" onClick={() => { setUnlocked(false); setSettingsOpen(false); notifiedRef.current.clear(); }}>
+                                    <button className="settings-item" onClick={() => { setUnlocked(false); setSettingsOpen(false); localStorage.removeItem('lastNotifDate'); }}>
                                         🚪 Verrouiller
                                     </button>
                                 </div>
@@ -1969,6 +2059,7 @@
                                             onMoveUp={onMoveUp} onMoveDown={onMoveDown}
                                             isFirst={idx === 0} isLast={idx === doneTasks.length - 1}
                                             onToggleSubtask={toggleSubtask}
+                                            isDraggingRef={isDraggingRef}
                                         />
                                     ))}
                                     {doneTasks.length > showDoneCount && (
