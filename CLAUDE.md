@@ -156,11 +156,11 @@ TaskFlow est une application web de gestion de taches personnelle, pensee pour u
 
 ### Recherche et filtres
 - **Barre de recherche** : recherche texte dans le titre, detail, sous-taches, deadline formatee, label de categorie
-- **Filtre temporel** : Tout / Aujourd'hui / Demain / 7 jours
+- **Filtre temporel** : Tout (defaut) / Aujourd'hui / Demain / 7 jours
 - **Filtre categorie** : dropdown avec toutes les categories du scope actif
 - **Filtre priorite** : dropdown par niveau
 - **Filtre "Faites"** : toggle pour afficher uniquement les taches completees
-- **Tri par priorite** : bouton pour trier par criticite
+- **Tri par deadline + priorite** : bouton pour trier d'abord par deadline (les plus proches en premier, sans deadline en dernier), puis par priorite a deadline egale
 
 ### Vues
 - **Vue Liste** : affichage en cartes avec toutes les interactions
@@ -233,9 +233,11 @@ TaskFlow est une application web de gestion de taches personnelle, pensee pour u
 ## Responsive
 
 - **Breakpoint principal** : `500px`
-  - Mobile (<500px) : swipe actions, modal plein ecran depuis le bas (flex-column avec scroll + boutons sticky), vue toggle inline
-  - Desktop (>500px) : boutons d'action visibles, modal centree, layout plus aere
+  - Mobile (<500px) : swipe actions, modal plein ecran depuis le bas, toggle Liste/Cal. inline dans la barre de recherche (le toggle desktop est masque via `!important`)
+  - Desktop (>500px) : boutons d'action visibles, modal centree, layout plus aere, toggle Liste/Calendrier sous les filtres
 - `box-sizing: border-box` sur `.form-input` et `.modal` pour eviter les debordements
+- **Boutons modaux sticky** sur toutes les tailles : le modal utilise `display: flex; flex-direction: column` avec le formulaire scrollable et les boutons fixes en bas (`.modal-btns.sticky-bottom`)
+- **Date input iOS** : `input[type="date"]` avec `-webkit-appearance: none`, `max-width: 100%`, `min-width: 0` pour forcer Safari a respecter la largeur du conteneur
 - **Breakpoint secondaire** : `400px` — padding reduits, taille PIN adaptee
 
 ---

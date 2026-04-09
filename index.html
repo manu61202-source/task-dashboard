@@ -316,7 +316,6 @@
         @media (max-width: 500px) {
             .view-btns-mobile { display: flex; gap: 3px; background: var(--bg-input); border-radius: var(--radius-xs); padding: 3px; flex-shrink: 0; }
             .view-btns-mobile .view-btn { padding: 6px 10px; font-size: 11px; }
-            .view-btns-desktop { display: none; }
         }
         .filter-row-compact {
             display: flex; gap: 8px; margin-bottom: 12px; align-items: center;
@@ -361,6 +360,7 @@
         .sort-btn:active { transform: scale(0.96); }
         .view-toggle-row .left-section { display: flex; align-items: center; gap: 0; }
         .view-btns { display: flex; gap: 4px; background: var(--bg-input); border-radius: var(--radius-xs); padding: 3px; }
+        @media (max-width: 500px) { .view-btns.view-btns-desktop { display: none !important; } }
         .view-btn {
             padding: 6px 14px;
             border: none;
@@ -556,13 +556,13 @@
             background: var(--bg-card); border-radius: 20px 20px 0 0; padding: 28px 24px 32px;
             width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
             box-shadow: var(--shadow-lg); animation: modalIn 0.3s ease-out;
-            box-sizing: border-box;
+            box-sizing: border-box; display: flex; flex-direction: column;
         }
+        .modal form, .modal-scroll-content { flex: 1; overflow-y: auto; min-height: 0; }
+        .modal-btns.sticky-bottom { flex-shrink: 0; position: sticky; bottom: 0; background: var(--bg-card); padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--bg-input); }
         @media (min-width: 500px) { .modal { border-radius: 20px; } }
         @media (max-width: 500px) {
-            .modal { width: 100vw; max-width: 100vw; overflow-x: hidden; display: flex; flex-direction: column; }
-            .modal-scroll-content { flex: 1; overflow-y: auto; min-height: 0; }
-            .modal-btns.sticky-bottom { flex-shrink: 0; position: sticky; bottom: 0; background: var(--bg-card); padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--bg-input); }
+            .modal { width: 100vw; max-width: 100vw; overflow-x: hidden; }
         }
         .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
         @media (min-width: 500px) { .modal-handle { display: none; } }
@@ -575,6 +575,7 @@
             outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;
         }
         .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,99,10,0.08); }
+        input[type="date"].form-input { -webkit-appearance: none; appearance: none; max-width: 100%; min-width: 0; overflow: hidden; }
         .form-input::placeholder { color: var(--text-muted); }
         textarea.form-input { min-height: 70px; resize: vertical; }
         select.form-input { cursor: pointer; }
@@ -1648,7 +1649,7 @@
             const [filters, setFilters] = useState({ category: null, priority: null });
             const [modal, setModal] = useState(null);
             const [view, setView] = useState('list');
-            const [timeFilter, setTimeFilter] = useState('7days');
+            const [timeFilter, setTimeFilter] = useState('all');
             const [showDoneCount, setShowDoneCount] = useState(3);
             const [showAllDone, setShowAllDone] = useState(false);
             const [searchQuery, setSearchQuery] = useState('');
@@ -1874,16 +1875,22 @@
             const toggleFilter = (type, value) => setFilters(prev => ({ ...prev, [type]: prev[type] === value ? null : value }));
 
             // Reset positions by priority (re-sort)
-            const resetByPriority = async () => {
+            const resetByDeadlineAndPriority = async () => {
                 const scoped = tasks.filter(t => getTaskScope(t.category, categories) === scope);
                 const resorted = [...scoped].sort((a, b) => {
                     if (a.done !== b.done) return a.done ? 1 : -1;
+                    if (a.deadline && b.deadline) {
+                        const diff = new Date(a.deadline) - new Date(b.deadline);
+                        if (diff !== 0) return diff;
+                    }
+                    if (a.deadline && !b.deadline) return -1;
+                    if (!a.deadline && b.deadline) return 1;
                     return priNum(getEffectivePriority(a)) - priNum(getEffectivePriority(b));
                 });
                 const updates = resorted.map((t, i) => ({ id: t.id, position: i }));
                 setTasks(prev => prev.map(t => { const u = updates.find(u => u.id === t.id); return u ? { ...t, position: u.position } : t; }));
                 for (const u of updates) await supabase.from('tasks').update({ position: u.position }).eq('id', u.id);
-                setToast('Trié par priorité !');
+                setToast('Trié par deadline et priorité !');
             };
 
             // ---- Derived ----
@@ -2041,7 +2048,7 @@
                             </span>
                             {view === 'list' && (
                                 <React.Fragment>
-                                    <button className="sort-btn" onClick={resetByPriority} title="Trier par priorité">↕ Trier</button>
+                                    <button className="sort-btn" onClick={resetByDeadlineAndPriority} title="Trier par deadline et priorité">↕ Trier</button>
                                     <button className={`sort-btn ${showAllDone ? 'active-done-filter' : ''}`}
                                         onClick={() => { setShowAllDone(!showAllDone); setShowDoneCount(showAllDone ? 3 : 10); }}
                                         style={showAllDone ? { background: 'var(--done-color)', color: 'white', borderColor: 'var(--done-color)' } : {}}
