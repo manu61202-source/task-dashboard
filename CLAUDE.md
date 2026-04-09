@@ -32,6 +32,12 @@ TaskFlow est une application web de gestion de taches personnelle, pensee pour u
 ```
 /
 ├── index.html              # Fichier unique contenant TOUT le code (HTML + CSS + JS/React)
+├── manifest.json           # Configuration PWA (nom, icones, display standalone, couleurs)
+├── icon-192.svg            # Icone app 192x192 (SVG)
+├── icon-512.svg            # Icone app 512x512 (SVG)
+├── icon-maskable.svg       # Icone maskable 512x512 (SVG, avec safe area pour Android)
+├── sw.js                   # Service worker pour le mode offline (cache assets + stale-while-revalidate)
+├── splash.html             # Splash screen iOS (logo + fond degrade, lance au demarrage PWA)
 ├── serve.js                # Serveur Node.js local pour le developpement (port 3000)
 ├── CLAUDE.md               # Ce fichier — documentation du projet
 ├── .github/
@@ -192,8 +198,9 @@ TaskFlow est une application web de gestion de taches personnelle, pensee pour u
 ## Design system
 
 ### Logo
-- Logo SVG inline (`TaskFlowLogo` composant) : icone carree arrondie avec degrade orange (`#E8630A` → `#F59E0B`) et checkmark blanc, suivi du texte "TaskFlow" en degrade
+- Logo SVG inline (`TaskFlowLogo` composant) : carre arrondi avec degrade orange (`#E8630A` → `#F59E0B`), courbe ascendante evoquant la progression/le flow avec un point au sommet, et deux lignes horizontales en dessous (evoquant une liste de taches) en opacite decroissante
 - Utilise sur : ecran PIN (taille 44), header app (taille 28), favicon (SVG data URI)
+- Icones d'app : `icon-192.svg`, `icon-512.svg` (meme design adapte), `icon-maskable.svg` (sans coins arrondis, safe area Android)
 
 ### Couleurs
 - **Accent principal** : orange `#E8630A`
@@ -230,6 +237,17 @@ TaskFlow est une application web de gestion de taches personnelle, pensee pour u
   - Desktop (>500px) : boutons d'action visibles, modal centree, layout plus aere
 - `box-sizing: border-box` sur `.form-input` et `.modal` pour eviter les debordements
 - **Breakpoint secondaire** : `400px` — padding reduits, taille PIN adaptee
+
+---
+
+## PWA (Progressive Web App)
+
+- **manifest.json** : configure l'app pour l'installation sur ecran d'accueil (display standalone, orientation portrait)
+- **Meta tags** dans `<head>` : `theme-color` (#E8630A), `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-mobile-web-app-title`
+- **Icones** : 3 fichiers SVG (192, 512, maskable) references dans le manifest + `apple-touch-icon` en data URI dans le `<head>`
+- **Service worker** (`sw.js`) : cache les assets au premier chargement (index.html, CDN React/Babel/Supabase, fonts, icones). Strategie stale-while-revalidate pour les assets, network-only pour les appels Supabase. Cache nomme `taskflow-v1` — incrementer la version pour forcer un refresh du cache
+- **Splash screen iOS** (`splash.html`) : page HTML legere avec le logo et fond degrade, affichee au lancement depuis l'ecran d'accueil iOS via `apple-touch-startup-image`
+- L'enregistrement du SW se fait dans un `<script>` classique juste avant les CDN, avec un `catch(() => {})` silencieux si l'enregistrement echoue
 
 ---
 

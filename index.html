@@ -4,7 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TaskFlow</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23E8630A'/><stop offset='100%25' stop-color='%23F59E0B'/></linearGradient></defs><rect rx='22' width='100' height='100' fill='url(%23g)'/><path d='M28 52l16 16 28-32' stroke='white' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23E8630A'/><stop offset='100%25' stop-color='%23F59E0B'/></linearGradient></defs><rect rx='22' width='100' height='100' fill='url(%23g)'/><path d='M20 62 C30 38, 45 28, 55 45 C60 53, 65 48, 80 30' stroke='white' stroke-width='8' fill='none' stroke-linecap='round'/><circle cx='80' cy='30' r='5' fill='white'/><path d='M22 70 L42 70' stroke='white' stroke-width='6' stroke-linecap='round' opacity='0.5'/><path d='M22 82 L56 82' stroke='white' stroke-width='6' stroke-linecap='round' opacity='0.3'/></svg>">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#E8630A">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="TaskFlow">
+    <link rel="apple-touch-icon" href="icon-192.svg">
+    <link rel="apple-touch-startup-image" href="splash.html">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -779,6 +786,14 @@
 <body>
     <div id="root"></div>
 
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -904,7 +919,10 @@
                         </linearGradient>
                     </defs>
                     <rect rx="22" width="100" height="100" fill="url(#logoGrad)" />
-                    <path d="M28 52l16 16 28-32" stroke="white" strokeWidth="10" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M20 62 C30 38, 45 28, 55 45 C60 53, 65 48, 80 30" stroke="white" strokeWidth="8" fill="none" strokeLinecap="round" />
+                    <circle cx="80" cy="30" r="5" fill="white" />
+                    <path d="M22 70 L42 70" stroke="white" strokeWidth="6" strokeLinecap="round" opacity="0.5" />
+                    <path d="M22 82 L56 82" stroke="white" strokeWidth="6" strokeLinecap="round" opacity="0.3" />
                 </svg>
                 <span style={{ fontSize: size * 0.75, fontWeight: 800, letterSpacing: -1.5, background: 'linear-gradient(135deg, #E8630A, #F59E0B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>TaskFlow</span>
             </div>
