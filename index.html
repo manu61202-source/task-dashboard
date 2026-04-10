@@ -242,46 +242,50 @@
             animation: fadeIn 0.3s ease-out;
         }
 
-        /* Scope Toggle */
-        .scope-toggle {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 16px;
-            background: var(--bg-input);
-            border-radius: var(--radius-sm);
-            padding: 4px;
-        }
-        .scope-btn {
-            flex: 1;
-            padding: 10px 16px;
-            border: none;
-            border-radius: var(--radius-xs);
-            font-size: 14px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: transparent;
-            color: var(--text-secondary);
-        }
-        .scope-btn.active-pro { background: var(--pro-bg); color: var(--pro-color); box-shadow: var(--shadow-sm); }
-        .scope-btn.active-perso { background: var(--perso-bg); color: var(--perso-color); box-shadow: var(--shadow-sm); }
-
-        /* Stats strip */
+        /* Stats strip — glassmorphism */
         .stats-strip {
             display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
         }
         .stat-card {
-            flex: 1; min-width: 70px; background: var(--bg-card); border: 1.5px solid var(--border);
-            border-radius: var(--radius-sm); padding: 8px 10px; text-align: center;
-            transition: all 0.15s;
+            flex: 1; min-width: 70px;
+            border-radius: var(--radius-sm); padding: 10px 10px; text-align: center;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1.5px solid transparent;
+            cursor: pointer;
         }
-        .stat-card .stat-num { font-size: 18px; font-weight: 800; line-height: 1; }
-        .stat-card .stat-label { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 3px; }
-        .stat-card.stat-overdue { border-color: #FECACA; }
-        .stat-card.stat-overdue .stat-num { color: var(--critique); }
-        .stat-card.stat-today .stat-num { color: var(--urgent); }
-        .stat-card.stat-week .stat-num { color: var(--pro-color); }
+        .stat-card:hover { transform: translateY(-1px); }
+        .stat-card .stat-num { font-size: 20px; font-weight: 800; line-height: 1; }
+        .stat-card .stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 4px; opacity: 0.85; }
+        .stat-card.stat-overdue {
+            background: linear-gradient(135deg, rgba(239,68,68,0.18), rgba(239,68,68,0.08));
+            border-color: rgba(239,68,68,0.35);
+            box-shadow: 0 4px 12px -4px rgba(239,68,68,0.25);
+        }
+        .stat-card.stat-overdue .stat-num,
+        .stat-card.stat-overdue .stat-label { color: #B91C1C; }
+        .stat-card.stat-today {
+            background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.08));
+            border-color: rgba(245,158,11,0.35);
+            box-shadow: 0 4px 12px -4px rgba(245,158,11,0.25);
+        }
+        .stat-card.stat-today .stat-num,
+        .stat-card.stat-today .stat-label { color: #B45309; }
+        .stat-card.stat-week {
+            background: linear-gradient(135deg, rgba(59,130,246,0.18), rgba(59,130,246,0.08));
+            border-color: rgba(59,130,246,0.35);
+            box-shadow: 0 4px 12px -4px rgba(59,130,246,0.25);
+        }
+        .stat-card.stat-week .stat-num,
+        .stat-card.stat-week .stat-label { color: #1D4ED8; }
+        .stat-card.stat-done {
+            background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.08));
+            border-color: rgba(16,185,129,0.35);
+            box-shadow: 0 4px 12px -4px rgba(16,185,129,0.25);
+        }
+        .stat-card.stat-done .stat-num,
+        .stat-card.stat-done .stat-label { color: #047857; }
 
         /* Time filter */
         .time-filter { display: flex; gap: 5px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -358,6 +362,17 @@
         }
         .sort-btn:hover { border-color: var(--accent); color: var(--accent); }
         .sort-btn:active { transform: scale(0.96); }
+        .scope-select {
+            padding: 5px 24px 5px 10px; border: 1.5px solid var(--border); border-radius: 20px;
+            font-size: 11px; font-weight: 600; font-family: inherit; cursor: pointer;
+            background: var(--bg-card); color: var(--text-secondary); transition: all 0.15s;
+            white-space: nowrap; margin-left: 8px; outline: none;
+            appearance: none; -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23ACACAA'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 10px center;
+        }
+        .scope-select:hover { border-color: var(--accent); color: var(--accent); }
+        .scope-select.has-value { background-color: var(--accent-light); border-color: var(--accent); color: var(--accent); }
         .view-toggle-row .left-section { display: flex; align-items: center; gap: 0; }
         .view-btns { display: flex; gap: 4px; background: var(--bg-input); border-radius: var(--radius-xs); padding: 3px; }
         @media (max-width: 500px) { .view-btns.view-btns-desktop { display: none !important; } }
@@ -383,7 +398,7 @@
             margin-bottom: 10px;
             border: 1.5px solid var(--border);
             display: flex;
-            gap: 14px;
+            gap: 12px;
             align-items: flex-start;
             transition: all 0.2s;
             cursor: default;
@@ -456,6 +471,31 @@
         .checkbox.checked { background: var(--done-color); border-color: var(--done-color); animation: checkPop 0.3s ease-out; }
         .checkbox.checked svg { stroke: white; }
         .checkbox.blocked-cb { cursor: not-allowed; opacity: 0.5; }
+
+        /* Left column: drag handle + checkbox in a row, scope tag below */
+        .task-left-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .task-left-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .task-scope-tag {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 3px 8px;
+            border-radius: 5px;
+            white-space: nowrap;
+        }
+        .task-scope-tag.scope-pro { background: var(--pro-bg); color: var(--pro-color); }
+        .task-scope-tag.scope-perso { background: var(--perso-bg); color: var(--perso-color); }
 
         .task-content { flex: 1; min-width: 0; }
         .task-title { font-size: 14px; font-weight: 500; color: var(--text); word-break: break-word; line-height: 1.4; }
@@ -1373,6 +1413,7 @@
         // ============================================
         function TaskCard({ task, tasks, isBlocked, onToggle, onEdit, onDelete, onCustomDragStart, categories, onMoveUp, onMoveDown, isFirst, isLast, onToggleSubtask, isDraggingRef }) {
             const cat = getCatInfo(task.category, categories);
+            const taskScope = getTaskScope(task.category, categories);
             const effPri = getEffectivePriority(task);
             const pri = PRIORITIES[effPri];
             const escalated = effPri !== task.priority;
@@ -1438,15 +1479,22 @@
                     onTouchEnd={onTouchEnd}
                     style={swipeX !== 0 ? { transform: `translateX(${swipeX}px)` } : undefined}
                 >
-                    <div className="drag-handle" title="Glisser pour réordonner"
-                        onMouseDown={(e) => onCustomDragStart(e, task.id)}
-                        onTouchStart={(e) => { e.stopPropagation(); onCustomDragStart(e, task.id); }}
-                    >⋮⋮</div>
-                    <div
-                        className={`checkbox ${task.done ? 'checked' : ''} ${blocked ? 'blocked-cb' : ''}`}
-                        onClick={() => !blocked && onToggle(task)}
-                    >
-                        {task.done && <CheckIcon />}
+                    <div className="task-left-col">
+                        <div className="task-left-row">
+                            <div className="drag-handle" title="Glisser pour réordonner"
+                                onMouseDown={(e) => onCustomDragStart(e, task.id)}
+                                onTouchStart={(e) => { e.stopPropagation(); onCustomDragStart(e, task.id); }}
+                            >⋮⋮</div>
+                            <div
+                                className={`checkbox ${task.done ? 'checked' : ''} ${blocked ? 'blocked-cb' : ''}`}
+                                onClick={() => !blocked && onToggle(task)}
+                            >
+                                {task.done && <CheckIcon />}
+                            </div>
+                        </div>
+                        <div className={`task-scope-tag scope-${taskScope}`}>
+                            {taskScope === 'pro' ? '💼 Pro' : '🏠 Perso'}
+                        </div>
                     </div>
                     <div className="task-content">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1645,7 +1693,7 @@
             const [unlocked, setUnlocked] = useState(false);
             const [tasks, setTasks] = useState([]);
             const [loading, setLoading] = useState(false);
-            const [scope, setScope] = useState('pro');
+            const [scope, setScope] = useState(null);
             const [filters, setFilters] = useState({ category: null, priority: null });
             const [modal, setModal] = useState(null);
             const [view, setView] = useState('list');
@@ -1734,8 +1782,10 @@
 
             const toggleDone = async (task) => {
                 const newDone = !task.done;
-                setTasks(prev => prev.map(t => t.id === task.id ? { ...t, done: newDone } : t));
-                await supabase.from('tasks').update({ done: newDone, updated_at: new Date().toISOString() }).eq('id', task.id);
+                const nowIso = new Date().toISOString();
+                const newDoneAt = newDone ? nowIso : null;
+                setTasks(prev => prev.map(t => t.id === task.id ? { ...t, done: newDone, done_at: newDoneAt } : t));
+                await supabase.from('tasks').update({ done: newDone, done_at: newDoneAt, updated_at: nowIso }).eq('id', task.id);
                 if (newDone) setToast('Tâche terminée !');
             };
 
@@ -1876,7 +1926,9 @@
 
             // Reset positions by priority (re-sort)
             const resetByDeadlineAndPriority = async () => {
-                const scoped = tasks.filter(t => getTaskScope(t.category, categories) === scope);
+                const scoped = scope === null
+                    ? [...tasks]
+                    : tasks.filter(t => getTaskScope(t.category, categories) === scope);
                 const resorted = [...scoped].sort((a, b) => {
                     if (a.done !== b.done) return a.done ? 1 : -1;
                     if (a.deadline && b.deadline) {
@@ -1894,7 +1946,9 @@
             };
 
             // ---- Derived ----
-            const scopeTasks = tasks.filter(t => getTaskScope(t.category, categories) === scope);
+            const scopeTasks = scope === null
+                ? tasks
+                : tasks.filter(t => getTaskScope(t.category, categories) === scope);
             const catFiltered = scopeTasks.filter(t => {
                 if (filters.category && t.category !== filters.category) return false;
                 if (filters.priority && getEffectivePriority(t) !== filters.priority) return false;
@@ -1931,7 +1985,7 @@
             const overdueTasks = scopeTasks.filter(t => !t.done && t.deadline && getDaysUntil(t.deadline) < 0);
             const todayTasks = scopeTasks.filter(t => !t.done && t.deadline && getDaysUntil(t.deadline) === 0);
             const weekTasks = scopeTasks.filter(t => !t.done && t.deadline && getDaysUntil(t.deadline) >= 0 && getDaysUntil(t.deadline) <= 7);
-            const todayDone = scopeTasks.filter(t => t.done && t.updated_at && new Date(t.updated_at).toDateString() === new Date().toDateString()).length;
+            const todayDone = scopeTasks.filter(t => t.done && t.done_at && new Date(t.done_at).toDateString() === new Date().toDateString()).length;
 
             // ---- PIN screen ----
             if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
@@ -1974,17 +2028,8 @@
                         </div>
                     </div>
 
-                    <div className="scope-toggle">
-                        {[['pro', '💼 Pro'], ['perso', '🏠 Perso']].map(([key, label]) => (
-                            <button key={key}
-                                className={`scope-btn ${scope === key ? (key === 'pro' ? 'active-pro' : 'active-perso') : ''}`}
-                                onClick={() => { setScope(key); setFilters({ category: null, priority: null }); }}
-                            >{label}</button>
-                        ))}
-                    </div>
-
                     <div className="stats-strip">
-                        <div className={`stat-card ${overdueTasks.length > 0 ? 'stat-overdue' : ''}`}>
+                        <div className="stat-card stat-overdue">
                             <div className="stat-num">{overdueTasks.length}</div>
                             <div className="stat-label">En retard</div>
                         </div>
@@ -1996,8 +2041,8 @@
                             <div className="stat-num">{weekTasks.length}</div>
                             <div className="stat-label">Cette sem.</div>
                         </div>
-                        <div className="stat-card">
-                            <div className="stat-num" style={{ color: 'var(--done-color)' }}>{todayDone}</div>
+                        <div className="stat-card stat-done">
+                            <div className="stat-num">{todayDone}</div>
                             <div className="stat-label">Faites ajd</div>
                         </div>
                     </div>
@@ -2028,7 +2073,7 @@
                         <select className={`filter-select ${filters.category ? 'has-value' : ''}`}
                             value={filters.category || ''} onChange={e => setFilters(prev => ({ ...prev, category: e.target.value || null }))}>
                             <option value="">📂 Catégorie</option>
-                            {categories[scope].map(cat => (
+                            {(scope === null ? [...categories.pro, ...categories.perso] : categories[scope]).map(cat => (
                                 <option key={cat.id} value={cat.id}>{cat.emoji} {cat.label}</option>
                             ))}
                         </select>
@@ -2053,6 +2098,15 @@
                                         onClick={() => { setShowAllDone(!showAllDone); setShowDoneCount(showAllDone ? 3 : 10); }}
                                         style={showAllDone ? { background: 'var(--done-color)', color: 'white', borderColor: 'var(--done-color)' } : {}}
                                     >✅ Faites</button>
+                                    <select className={`scope-select ${scope ? 'has-value' : ''}`}
+                                        value={scope || ''}
+                                        onChange={e => { const v = e.target.value || null; setScope(v); setFilters({ category: null, priority: null }); }}
+                                        title="Filtrer par scope"
+                                    >
+                                        <option value="">🌐 Tout</option>
+                                        <option value="pro">💼 Pro</option>
+                                        <option value="perso">🏠 Perso</option>
+                                    </select>
                                 </React.Fragment>
                             )}
                         </div>
