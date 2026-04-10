@@ -712,6 +712,55 @@
         .settings-item.danger { color: var(--critique); }
         .settings-item.danger:hover { background: var(--critique-bg); }
 
+        /* Calendar Share Modal */
+        .cal-url-box {
+            display: flex; gap: 8px; margin-bottom: 14px;
+            background: var(--bg-input); border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm); padding: 6px 6px 6px 12px;
+        }
+        .cal-url-input {
+            flex: 1; min-width: 0; border: none; background: transparent;
+            font-size: 12px; font-family: monospace; color: var(--text-secondary);
+            outline: none; padding: 6px 0;
+        }
+        .cal-copy-btn {
+            border: none; background: var(--accent); color: white;
+            padding: 8px 14px; border-radius: var(--radius-xs);
+            font-size: 12px; font-weight: 600; font-family: inherit;
+            cursor: pointer; white-space: nowrap; transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .cal-copy-btn:hover { background: #D55708; }
+        .cal-copy-btn:active { transform: scale(0.96); }
+        .cal-instructions-toggle {
+            display: block; width: 100%; padding: 10px 12px; border: 1.5px solid var(--border);
+            border-radius: var(--radius-xs); background: var(--bg-card); color: var(--text-secondary);
+            font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+            text-align: left; transition: all 0.15s;
+        }
+        .cal-instructions-toggle:hover { border-color: var(--accent); color: var(--accent); }
+        .cal-instructions {
+            background: var(--bg-input); border-radius: var(--radius-xs);
+            padding: 12px 16px; margin-top: 8px; font-size: 12px; color: var(--text-secondary);
+            line-height: 1.5; animation: fadeIn 0.2s ease-out;
+        }
+        .cal-instructions ol { margin: 0; padding-left: 18px; }
+        .cal-instructions li { margin-bottom: 4px; }
+        .cal-divider {
+            height: 1px; background: var(--border); margin: 16px 0;
+        }
+        .cal-regen-btn {
+            display: block; width: 100%; padding: 10px 12px; border: 1.5px solid var(--border);
+            border-radius: var(--radius-xs); background: var(--bg-card); color: var(--text-secondary);
+            font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .cal-regen-btn:hover { border-color: var(--critique); color: var(--critique); background: var(--critique-bg); }
+        .cal-regen-confirm {
+            background: var(--critique-bg); border: 1.5px solid #FECACA;
+            border-radius: var(--radius-xs); padding: 12px;
+        }
+
         /* Confirm dialog */
         .confirm-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.4);
@@ -1246,6 +1295,140 @@
         }
 
         // ============================================
+        // CALENDAR SHARE MODAL
+        // ============================================
+        function CalendarShareModal({ onClose }) {
+            const FEED_BASE = 'https://krtkwxowuwqmqijcsbvv.supabase.co/functions/v1/calendar-feed';
+            const [token, setToken] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [copied, setCopied] = useState(false);
+            const [confirmRegen, setConfirmRegen] = useState(false);
+            const [showInstructions, setShowInstructions] = useState(false);
+
+            useEffect(() => {
+                (async () => {
+                    const { data } = await supabase.from('app_config').select('value').eq('key', 'calendar_token').maybeSingle();
+                    setToken(data?.value || null);
+                    setLoading(false);
+                })();
+            }, []);
+
+            const generateToken = async () => {
+                const newToken = crypto.randomUUID();
+                const { data: existing } = await supabase.from('app_config').select('key').eq('key', 'calendar_token').maybeSingle();
+                if (existing) {
+                    await supabase.from('app_config').update({ value: newToken }).eq('key', 'calendar_token');
+                } else {
+                    await supabase.from('app_config').insert({ key: 'calendar_token', value: newToken });
+                }
+                setToken(newToken);
+                setConfirmRegen(false);
+            };
+
+            const copyUrl = () => {
+                if (!token) return;
+                const url = `${FEED_BASE}?token=${token}`;
+                navigator.clipboard.writeText(url).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                });
+            };
+
+            const url = token ? `${FEED_BASE}?token=${token}` : '';
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+                        <div className="modal-handle" />
+                        <h2>📅 Calendrier partagé</h2>
+
+                        {loading ? (
+                            <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-muted)' }}>Chargement...</div>
+                        ) : !token ? (
+                            <div>
+                                <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
+                                    Active le partage pour générer une URL d'abonnement à ton calendrier de tâches.
+                                    Tu pourras ensuite l'ajouter à Google Calendar, Apple Calendar, Outlook, etc.
+                                </p>
+                                <div className="modal-btns">
+                                    <button type="button" className="btn-cancel" onClick={onClose}>Annuler</button>
+                                    <button type="button" className="btn-submit" onClick={generateToken}>✨ Activer le calendrier</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
+                                    Abonne-toi à ce calendrier depuis Google Cal, Apple Cal ou Outlook pour voir tes tâches dans ton agenda.
+                                </p>
+
+                                <div className="cal-url-box">
+                                    <input
+                                        type="text"
+                                        value={url}
+                                        readOnly
+                                        onFocus={e => e.target.select()}
+                                        className="cal-url-input"
+                                    />
+                                    <button type="button" className="cal-copy-btn" onClick={copyUrl}>
+                                        {copied ? '✓ Copié' : '📋 Copier'}
+                                    </button>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="cal-instructions-toggle"
+                                    onClick={() => setShowInstructions(!showInstructions)}
+                                >
+                                    {showInstructions ? '▼' : '▶'} Comment l'ajouter dans Google Calendar
+                                </button>
+                                {showInstructions && (
+                                    <div className="cal-instructions">
+                                        <ol>
+                                            <li>Ouvre <strong>Google Calendar</strong> sur ordinateur</li>
+                                            <li>Dans la barre latérale, clique sur le <strong>+</strong> à côté de "Autres agendas"</li>
+                                            <li>Choisis <strong>"À partir d'une URL"</strong></li>
+                                            <li>Colle l'URL ci-dessus et clique sur <strong>"Ajouter un agenda"</strong></li>
+                                        </ol>
+                                        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>
+                                            ⚠️ Google met entre quelques heures et 24h pour rafraîchir le calendrier.
+                                            Apple Calendar est plus rapide (~15 min).
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="cal-divider" />
+
+                                {!confirmRegen ? (
+                                    <button
+                                        type="button"
+                                        className="cal-regen-btn"
+                                        onClick={() => setConfirmRegen(true)}
+                                    >
+                                        🔄 Régénérer le token
+                                    </button>
+                                ) : (
+                                    <div className="cal-regen-confirm">
+                                        <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                                            ⚠️ L'ancienne URL deviendra invalide. Tu devras réabonner ton calendrier.
+                                        </p>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button type="button" className="btn-cancel" style={{ flex: 1 }} onClick={() => setConfirmRegen(false)}>Annuler</button>
+                                            <button type="button" className="btn-submit" style={{ flex: 1 }} onClick={generateToken}>Confirmer</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="modal-btns" style={{ marginTop: 16 }}>
+                                    <button type="button" className="btn-cancel" onClick={onClose} style={{ width: '100%' }}>Fermer</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // ============================================
         // CATEGORY MANAGER MODAL
         // ============================================
         function CategoryManagerModal({ categories, onClose, onSave }) {
@@ -1705,6 +1888,7 @@
             const [settingsOpen, setSettingsOpen] = useState(false);
             const [pinModal, setPinModal] = useState(false);
             const [catModal, setCatModal] = useState(false);
+            const [calendarModal, setCalendarModal] = useState(false);
             const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
             const [confirmDelete, setConfirmDelete] = useState(null);
             const settingsRef = useRef(null);
@@ -2017,6 +2201,9 @@
                                     <button className="settings-item" onClick={() => { setCatModal(true); setSettingsOpen(false); }}>
                                         🏷️ Gérer les catégories
                                     </button>
+                                    <button className="settings-item" onClick={() => { setCalendarModal(true); setSettingsOpen(false); }}>
+                                        📅 Calendrier partagé
+                                    </button>
                                     <button className="settings-item" onClick={() => { setPinModal(true); setSettingsOpen(false); }}>
                                         🔐 Changer le code PIN
                                     </button>
@@ -2218,6 +2405,10 @@
 
                     {catModal && (
                         <CategoryManagerModal categories={categories} onClose={() => setCatModal(false)} onSave={saveCategories} />
+                    )}
+
+                    {calendarModal && (
+                        <CalendarShareModal onClose={() => setCalendarModal(false)} />
                     )}
 
                     {confirmDelete && (
