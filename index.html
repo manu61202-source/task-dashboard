@@ -534,19 +534,43 @@
         .task-action-btn:hover { background: var(--bg-input); color: var(--text); border-color: var(--border); }
         .task-action-btn.delete:hover { background: var(--critique-bg); color: var(--critique); border-color: #FECACA; }
 
+        /* +1j deadline push button (desktop) */
+        .push-deadline-btn {
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--accent);
+            height: 67px;
+            padding: 0 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+            letter-spacing: 0.3px;
+        }
+        .push-deadline-btn:hover { background: var(--accent-light); border-color: var(--accent); }
+        .push-deadline-btn:active { transform: scale(0.95); }
+
         /* Swipe container for mobile */
         .swipe-container { position: relative; overflow: hidden; border-radius: var(--radius); margin-bottom: 10px; background: var(--bg-card); animation: fadeIn 0.3s ease-out; }
         .swipe-container .task-card { margin-bottom: 0; transition: transform 0.25s ease; position: relative; z-index: 2; }
         .swipe-actions {
             position: absolute; top: 0; right: 0; bottom: 0; display: none; z-index: 1;
+            align-items: center; gap: 4px; padding: 8px;
         }
         .swipe-action {
-            width: 70px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 64px; height: 64px; border-radius: 14px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             border: none; cursor: pointer; font-size: 10px; font-weight: 700; font-family: inherit;
             color: white; gap: 3px; letter-spacing: 0.3px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
         }
-        .swipe-action span { font-size: 18px; }
-        .swipe-action.swipe-edit { background: #3B7DD8; border-radius: 12px 0 0 12px; }
+        .swipe-action:active { transform: scale(0.94); }
+        .swipe-action span { font-size: 20px; }
+        .swipe-action.swipe-push { background: #E8630A; }
+        .swipe-action.swipe-edit { background: #3B7DD8; }
         .swipe-action.swipe-delete { background: #D94949; }
 
         @media (max-width: 500px) {
@@ -1594,7 +1618,7 @@
         // ============================================
         // TASK CARD
         // ============================================
-        function TaskCard({ task, tasks, isBlocked, onToggle, onEdit, onDelete, onCustomDragStart, categories, onMoveUp, onMoveDown, isFirst, isLast, onToggleSubtask, isDraggingRef }) {
+        function TaskCard({ task, tasks, isBlocked, onToggle, onEdit, onDelete, onCustomDragStart, categories, onMoveUp, onMoveDown, isFirst, isLast, onToggleSubtask, isDraggingRef, onPushDeadline }) {
             const cat = getCatInfo(task.category, categories);
             const taskScope = getTaskScope(task.category, categories);
             const effPri = getEffectivePriority(task);
@@ -1611,6 +1635,9 @@
 
             const isMobile = () => window.innerWidth <= 500;
             const isDragging = () => isDraggingRef && isDraggingRef.current;
+            const canPush = !!task.deadline && !task.done;
+            // Widths: 2 btns = 8+64+4+64+8 = 148 ; 3 btns = 8+64+4+64+4+64+8 = 216
+            const swipeMax = canPush ? -216 : -148;
 
             const onTouchStart = (e) => {
                 if (!isMobile() || isDragging()) { touchRef.current.active = false; return; }
@@ -1627,12 +1654,12 @@
                 }
                 if (touchRef.current.swiping) {
                     e.preventDefault();
-                    setSwipeX(Math.min(0, Math.max(-140, dx)));
+                    setSwipeX(Math.min(0, Math.max(swipeMax, dx)));
                 }
             };
             const onTouchEnd = () => {
                 if (!touchRef.current.active) return;
-                if (swipeX < -50) setSwipeX(-140);
+                if (swipeX < -50) setSwipeX(swipeMax);
                 else setSwipeX(0);
                 touchRef.current.swiping = false;
                 touchRef.current.active = false;
@@ -1647,6 +1674,11 @@
               <div className="swipe-container" data-task-id={task.id}>
                 {!task.done && (
                   <div className="swipe-actions">
+                    {canPush && (
+                        <button className="swipe-action swipe-push" onClick={() => { setSwipeX(0); onPushDeadline(task.id); }}>
+                            <span>📅</span>+1J
+                        </button>
+                    )}
                     <button className="swipe-action swipe-edit" onClick={() => { setSwipeX(0); onEdit(task.id); }}>
                         <span>✏️</span>MODIFIER
                     </button>
@@ -1724,6 +1756,9 @@
                         )}
                     </div>
                     <div className="task-actions">
+                        {canPush && (
+                            <button className="push-deadline-btn" onClick={() => onPushDeadline(task.id)} title="Repousser la deadline d'1 jour">+1j</button>
+                        )}
                         <div className="task-actions-group">
                             <button className="move-btn" onClick={() => onMoveUp(task.id)} disabled={isFirst} title="Monter">▲</button>
                             <button className="move-btn" onClick={() => onMoveDown(task.id)} disabled={isLast} title="Descendre">▼</button>
@@ -2106,6 +2141,19 @@
                 await supabase.from('tasks').update({ position: posA }).eq('id', b.id);
             };
 
+            // Push deadline by +1 day
+            const pushDeadline = async (id) => {
+                const task = tasks.find(t => t.id === id);
+                if (!task || !task.deadline || task.done) return;
+                const d = new Date(task.deadline + 'T00:00:00Z');
+                d.setUTCDate(d.getUTCDate() + 1);
+                const newDeadline = d.toISOString().slice(0, 10);
+                const nowIso = new Date().toISOString();
+                setTasks(prev => prev.map(t => t.id === id ? { ...t, deadline: newDeadline } : t));
+                await supabase.from('tasks').update({ deadline: newDeadline, updated_at: nowIso }).eq('id', id);
+                setToast('Deadline reportée de 1 jour');
+            };
+
             const toggleFilter = (type, value) => setFilters(prev => ({ ...prev, [type]: prev[type] === value ? null : value }));
 
             // Reset positions by priority (re-sort)
@@ -2322,7 +2370,7 @@
                                         <TaskCard key={task.id} task={task} tasks={tasks} isBlocked={isBlocked}
                                             onToggle={toggleDone} onEdit={(id) => setModal(id)} onDelete={requestDelete}
                                             onCustomDragStart={onCustomDragStart} categories={categories}
-                                            onMoveUp={onMoveUp} onMoveDown={onMoveDown}
+                                            onMoveUp={onMoveUp} onMoveDown={onMoveDown} onPushDeadline={pushDeadline}
                                             isFirst={idx === 0} isLast={idx === doneTasks.length - 1}
                                             onToggleSubtask={toggleSubtask}
                                             isDraggingRef={isDraggingRef}
@@ -2352,7 +2400,7 @@
                                             <TaskCard key={task.id} task={task} tasks={tasks} isBlocked={isBlocked}
                                                 onToggle={toggleDone} onEdit={(id) => setModal(id)} onDelete={requestDelete}
                                                 onCustomDragStart={onCustomDragStart} categories={categories}
-                                                onMoveUp={onMoveUp} onMoveDown={onMoveDown}
+                                                onMoveUp={onMoveUp} onMoveDown={onMoveDown} onPushDeadline={pushDeadline}
                                                 isFirst={idx === 0} isLast={idx === activeTasks.length - 1}
                                                 onToggleSubtask={toggleSubtask}
                                             />
@@ -2364,7 +2412,7 @@
                                                     <TaskCard key={task.id} task={task} tasks={tasks} isBlocked={isBlocked}
                                                         onToggle={toggleDone} onEdit={(id) => setModal(id)} onDelete={requestDelete}
                                                         onCustomDragStart={onCustomDragStart} categories={categories}
-                                                        onMoveUp={onMoveUp} onMoveDown={onMoveDown}
+                                                        onMoveUp={onMoveUp} onMoveDown={onMoveDown} onPushDeadline={pushDeadline}
                                                         isFirst={false} isLast={false}
                                                         onToggleSubtask={toggleSubtask}
                                                     />
