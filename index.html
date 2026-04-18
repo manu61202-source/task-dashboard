@@ -407,7 +407,7 @@
         .task-card:hover { border-color: #D0D0CB; box-shadow: var(--shadow-sm); }
         .task-card.overdue { border-color: #FCA5A5; background: #FFFBFB; }
         .task-card.done { opacity: 0.5; }
-        .task-card.blocked { opacity: 0.45; }
+        .task-card.blocked > * { opacity: 0.45; }
         .task-card.dragging { opacity: 0.75; border-color: var(--accent); box-shadow: var(--shadow-lg); background: var(--accent-light); }
         .task-card.drag-over { border-color: var(--accent); border-style: dashed; }
 
@@ -851,6 +851,13 @@
             font-size: 16px; padding: 2px 6px; border-radius: 4px; transition: all 0.15s;
         }
         .cat-remove-btn:hover { background: var(--critique-bg); color: var(--critique); }
+        .cat-move-btn {
+            border: none; background: var(--bg-input); color: var(--text-muted); cursor: pointer;
+            width: 24px; height: 24px; border-radius: 5px; font-size: 10px; padding: 0;
+            display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+        }
+        .cat-move-btn:hover:not(:disabled) { background: var(--accent-light); color: var(--accent); }
+        .cat-move-btn:disabled { opacity: 0.3; cursor: default; }
         .cat-add-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
         .cat-add-row input { min-width: 0; }
         .cat-add-row .cat-name-input { flex: 1; min-width: 120px; }
@@ -1511,6 +1518,17 @@
                 setConfirmRemove(null);
             };
 
+            const moveCategory = (id, dir) => {
+                setCats(prev => {
+                    const list = [...prev[scope]];
+                    const idx = list.findIndex(c => c.id === id);
+                    const j = idx + dir;
+                    if (idx === -1 || j < 0 || j >= list.length) return prev;
+                    [list[idx], list[j]] = [list[j], list[idx]];
+                    return { ...prev, [scope]: list };
+                });
+            };
+
             const handleSave = async () => {
                 setSaving(true);
                 await onSave(cats);
@@ -1531,7 +1549,7 @@
 
                         <div className="cat-list">
                             {cats[scope].length === 0 && <div className="cat-empty">Aucune catégorie</div>}
-                            {cats[scope].map(c => (
+                            {cats[scope].map((c, idx) => (
                                 <div key={c.id} className="cat-item">
                                     {editingId === c.id ? (
                                         <React.Fragment>
@@ -1560,6 +1578,8 @@
                                         <React.Fragment>
                                             <span>{c.emoji}</span>
                                             <span className="cat-item-label">{c.label}</span>
+                                            <button className="cat-move-btn" onClick={() => moveCategory(c.id, -1)} disabled={idx === 0} title="Monter">▲</button>
+                                            <button className="cat-move-btn" onClick={() => moveCategory(c.id, 1)} disabled={idx === cats[scope].length - 1} title="Descendre">▼</button>
                                             <button className="cat-remove-btn" onClick={() => startEdit(c)} title="Modifier" style={{ color: 'var(--text-muted)' }}>✏️</button>
                                             <button className="cat-remove-btn" onClick={e => { e.stopPropagation(); setConfirmRemove(c); }} title="Supprimer">×</button>
                                         </React.Fragment>
