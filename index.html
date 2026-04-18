@@ -1692,7 +1692,7 @@
 
             return (
               <div className="swipe-container" data-task-id={task.id}>
-                {!task.done && (
+                {!task.done && swipeX !== 0 && (
                   <div className="swipe-actions">
                     {canPush && (
                         <button className="swipe-action swipe-push" onClick={() => { setSwipeX(0); onPushDeadline(task.id); }}>
