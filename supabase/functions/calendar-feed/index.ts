@@ -1,6 +1,6 @@
-// TaskFlow — Calendar Feed Edge Function
-// Génère un fichier ICS (RFC 5545) avec toutes les tâches qui ont une deadline.
-// Authentification par token UUID stocké dans app_config.calendar_token.
+// TaskFlow — Calendar Feed Edge Function (multi-user)
+// Génère un fichier ICS (RFC 5545) avec les tâches du user identifié par son token.
+// Authentification par token UUID stocké dans user_config (key='calendar_token', value={"token":"<uuid>"}).
 // Déployée avec verify_jwt: false (Google Calendar / Apple Cal n'envoient pas de Bearer token).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -146,7 +146,7 @@ function buildEvent(task: Task, catInfo: CategoryInfo): string[] {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Categories : lecture depuis app_config + fallback
+// Categories : lecture depuis user_config + fallback
 // ────────────────────────────────────────────────────────────────────────────
 
 const DEFAULT_CATEGORIES: { pro: CategoryInfo[]; perso: CategoryInfo[] } = {
@@ -187,43 +187,46 @@ Deno.serve(async (req: Request) => {
         const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // 1. Vérifier le token
+        // 1. Identifier le user via son token (stocké comme {"token": "<uuid>"} dans user_config)
         const { data: tokenRow, error: tokenErr } = await supabase
-            .from("app_config")
-            .select("value")
+            .from("user_config")
+            .select("user_id")
             .eq("key", "calendar_token")
+            .eq("value->>token", token)
             .maybeSingle();
 
         if (tokenErr) {
             console.error("Error reading token:", tokenErr);
             return new Response("Server error", { status: 500 });
         }
-        if (!tokenRow || tokenRow.value !== token) {
+        if (!tokenRow) {
             return new Response("Invalid token", { status: 401 });
         }
+        const userId = tokenRow.user_id;
 
-        // 2. Lire les catégories custom (fallback aux defaults si absentes ou invalides)
+        // 2. Lire les catégories custom du user (fallback aux defaults si absentes)
+        // value est jsonb donc déjà parsé par supabase-js
         let categories = DEFAULT_CATEGORIES;
         const { data: catRow } = await supabase
-            .from("app_config")
+            .from("user_config")
             .select("value")
+            .eq("user_id", userId)
             .eq("key", "custom_categories")
             .maybeSingle();
-        if (catRow && catRow.value) {
-            try {
-                const parsed = JSON.parse(catRow.value);
-                if (parsed && parsed.pro && parsed.perso) {
-                    categories = parsed;
-                }
-            } catch {
-                // ignore, use defaults
-            }
+        if (
+            catRow?.value &&
+            typeof catRow.value === "object" &&
+            "pro" in catRow.value &&
+            "perso" in catRow.value
+        ) {
+            categories = catRow.value as typeof DEFAULT_CATEGORIES;
         }
 
-        // 3. Lire toutes les tâches avec deadline
+        // 3. Lire les tâches du user uniquement (filtrage user_id)
         const { data: tasks, error: tasksErr } = await supabase
             .from("tasks")
             .select("id,text,detail,category,priority,deadline,done,subtasks,created_at,updated_at")
+            .eq("user_id", userId)
             .not("deadline", "is", null)
             .order("deadline", { ascending: true });
 
