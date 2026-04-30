@@ -1828,6 +1828,54 @@
                     });
             }, [userId]);
 
+            // Realtime sync : tout changement sur tasks (depuis un autre device, un autre onglet,
+            // ou depuis ce device) est répercuté automatiquement dans le state local. RLS garantit
+            // qu'on ne reçoit QUE les events sur ses propres tâches. Idempotent : si l'event correspond
+            // déjà à l'état local (notre propre write qui revient), c'est un no-op.
+            useEffect(() => {
+                if (!userId) return;
+                const channel = supabase
+                    .channel(`tasks:${userId}`)
+                    .on('postgres_changes', {
+                        event: '*', schema: 'public', table: 'tasks',
+                        filter: `user_id=eq.${userId}`,
+                    }, (payload) => {
+                        if (payload.eventType === 'INSERT') {
+                            setTasks(prev => prev.some(t => t.id === payload.new.id)
+                                ? prev
+                                : [...prev, { ...payload.new, subtasks: payload.new.subtasks || [] }]);
+                        } else if (payload.eventType === 'UPDATE') {
+                            setTasks(prev => prev.map(t => t.id === payload.new.id
+                                ? { ...payload.new, subtasks: payload.new.subtasks || [] }
+                                : t));
+                        } else if (payload.eventType === 'DELETE') {
+                            setTasks(prev => prev.filter(t => t.id !== payload.old.id));
+                        }
+                    })
+                    .subscribe();
+                return () => { supabase.removeChannel(channel); };
+            }, [userId]);
+
+            // Realtime sync pour user_config (categories sync entre devices)
+            useEffect(() => {
+                if (!userId) return;
+                const channel = supabase
+                    .channel(`user_config:${userId}`)
+                    .on('postgres_changes', {
+                        event: '*', schema: 'public', table: 'user_config',
+                        filter: `user_id=eq.${userId}`,
+                    }, (payload) => {
+                        const row = payload.new || payload.old;
+                        if (!row || row.key !== 'custom_categories') return;
+                        if (payload.eventType === 'DELETE') { setCategories(DEFAULT_CATEGORIES); return; }
+                        if (payload.new.value?.pro && payload.new.value?.perso) {
+                            setCategories(payload.new.value);
+                        }
+                    })
+                    .subscribe();
+                return () => { supabase.removeChannel(channel); };
+            }, [userId]);
+
             const saveCategories = async (newCats) => {
                 const prevCats = categories;
                 setCategories(newCats);
