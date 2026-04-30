@@ -1,7 +1,8 @@
-const CACHE_NAME = 'taskflow-v2';
+const CACHE_NAME = 'taskflow-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
+  './auth.js',
   './manifest.json',
   './icon-192.svg',
   './icon-512.svg',

@@ -921,13 +921,17 @@
 
     <script>
         // Initialize Supabase BEFORE Babel loads (regular script, guaranteed execution order)
+        // Project: taskflow (pndljymbmweiviujheyy) — dedicated TaskFlow project, RLS enabled
         window.SUPABASE_CLIENT = window.supabase.createClient(
-            'https://krtkwxowuwqmqijcsbvv.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtydGt3eG93dXdxbXFpamNzYnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNTU4NTcsImV4cCI6MjA4ODkzMTg1N30.oizsOjv6swlb9ipiqJOvWUKnwc3u2djOsfQRTkHUyh4'
+            'https://pndljymbmweiviujheyy.supabase.co',
+            'sb_publishable_4e9eLsjddkq4YS_OZ1kDSA_oPzil8iT'
         );
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+
+    <!-- Auth module : expose window.TaskFlowAuth { authService, useAuthSession, AuthScreen, PasswordChangeModal } -->
+    <script type="text/babel" src="./auth.js"></script>
 
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef, useMemo } = React;
@@ -1049,83 +1053,7 @@
             </div>
         );
 
-        // ============================================
-        // PIN SCREEN
-        // ============================================
-        function PinScreen({ onUnlock }) {
-            const [pin, setPin] = useState('');
-            const [error, setError] = useState(false);
-            const [checking, setChecking] = useState(false);
-
-            const handleKey = async (digit) => {
-                if (checking) return;
-                setError(false);
-                const newPin = pin + digit;
-                setPin(newPin);
-
-                if (newPin.length === 6) {
-                    setChecking(true);
-                    // Verify PIN against Supabase
-                    const { data } = await supabase
-                        .from('app_config')
-                        .select('value')
-                        .eq('key', 'pin')
-                        .single();
-
-                    if (data && data.value === newPin) {
-                        onUnlock();
-                    } else {
-                        setError(true);
-                        setTimeout(() => { setPin(''); setError(false); }, 600);
-                    }
-                    setChecking(false);
-                }
-            };
-
-            const handleBackspace = () => {
-                if (checking) return;
-                setPin(prev => prev.slice(0, -1));
-                setError(false);
-            };
-
-            // Keyboard support
-            useEffect(() => {
-                const handler = (e) => {
-                    if (e.key >= '0' && e.key <= '9') handleKey(e.key);
-                    if (e.key === 'Backspace') handleBackspace();
-                };
-                window.addEventListener('keydown', handler);
-                return () => window.removeEventListener('keydown', handler);
-            }, [pin, checking]);
-
-            return (
-                <div className="pin-container">
-                    <div className={`pin-card ${error ? 'pin-shake' : ''}`}>
-                        <div className="pin-logo"><TaskFlowLogo size={44} /></div>
-                        <div className="pin-subtitle">Entre ton code pour accéder à tes tâches</div>
-
-                        <div className="pin-dots">
-                            {[0,1,2,3,4,5].map(i => (
-                                <div key={i} className={`pin-dot ${i < pin.length ? (error ? 'error filled' : 'filled') : ''}`} />
-                            ))}
-                        </div>
-
-                        <div className="pin-keypad">
-                            {[1,2,3,4,5,6,7,8,9].map(n => (
-                                <button key={n} className="pin-key" onClick={() => handleKey(String(n))}>{n}</button>
-                            ))}
-                            <div className="pin-key empty" />
-                            <button className="pin-key" onClick={() => handleKey('0')}>0</button>
-                            <button className="pin-key backspace" onClick={handleBackspace}>&#9003;</button>
-                        </div>
-
-                        <div className="pin-error-msg">
-                            {error ? 'Code incorrect' : ''}
-                        </div>
-                    </div>
-                </div>
-            );
-        }
+        // PinScreen + PinChangeModal extraits dans auth.js (window.TaskFlowAuth)
 
         // ============================================
         // TASK MODAL
@@ -1245,87 +1173,6 @@
         }
 
         // ============================================
-        // PIN CHANGE MODAL
-        // ============================================
-        function PinChangeModal({ onClose, onChanged }) {
-            const [oldPin, setOldPin] = useState('');
-            const [newPin, setNewPin] = useState('');
-            const [confirm, setConfirm] = useState('');
-            const [error, setError] = useState('');
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                if (oldPin.length !== 6) { setError('Entrez votre code actuel (6 chiffres)'); return; }
-
-                const { data } = await supabase.from('app_config').select('value').eq('key', 'pin').single();
-                if (!data || data.value !== oldPin) { setError('Code actuel incorrect'); return; }
-
-                if (newPin.length !== 6) { setError('Le nouveau code doit faire 6 chiffres'); return; }
-                if (newPin !== confirm) { setError('Les codes ne correspondent pas'); return; }
-
-                await supabase.from('app_config').update({ value: newPin }).eq('key', 'pin');
-                onChanged();
-                onClose();
-            };
-
-            return (
-                <div className="modal-overlay" onClick={onClose}>
-                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
-                        <div className="modal-handle" />
-                        <h2>Changer le code PIN</h2>
-                        <form onSubmit={handleSubmit}>
-                            <div className="form-group">
-                                <label className="form-label">Code actuel</label>
-                                <input
-                                    className="pin-change-input"
-                                    type="tel"
-                                    maxLength={6}
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    value={oldPin}
-                                    onChange={e => { setOldPin(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
-                                    placeholder="••••••"
-                                    autoFocus
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Nouveau code (6 chiffres)</label>
-                                <input
-                                    className="pin-change-input"
-                                    type="tel"
-                                    maxLength={6}
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    value={newPin}
-                                    onChange={e => { setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
-                                    placeholder="••••••"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Confirmer le nouveau code</label>
-                                <input
-                                    className="pin-change-input"
-                                    type="tel"
-                                    maxLength={6}
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    value={confirm}
-                                    onChange={e => { setConfirm(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
-                                    placeholder="••••••"
-                                />
-                            </div>
-                            {error && <div style={{ color: 'var(--critique)', fontSize: 13, fontWeight: 500, marginBottom: 10 }}>{error}</div>}
-                            <div className="modal-btns">
-                                <button type="button" className="btn-cancel" onClick={onClose}>Annuler</button>
-                                <button type="submit" className="btn-submit">Enregistrer</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            );
-        }
-
-        // ============================================
         // CALENDAR SHARE MODAL
         // ============================================
         function CalendarShareModal({ onClose }) {
@@ -1338,20 +1185,20 @@
 
             useEffect(() => {
                 (async () => {
-                    const { data } = await supabase.from('app_config').select('value').eq('key', 'calendar_token').maybeSingle();
-                    setToken(data?.value || null);
+                    // value est jsonb, format : { token: '<uuid>' }
+                    const { data } = await supabase.from('user_config').select('value').eq('key', 'calendar_token').maybeSingle();
+                    setToken(data?.value?.token || null);
                     setLoading(false);
                 })();
             }, []);
 
             const generateToken = async () => {
                 const newToken = crypto.randomUUID();
-                const { data: existing } = await supabase.from('app_config').select('key').eq('key', 'calendar_token').maybeSingle();
-                if (existing) {
-                    await supabase.from('app_config').update({ value: newToken }).eq('key', 'calendar_token');
-                } else {
-                    await supabase.from('app_config').insert({ key: 'calendar_token', value: newToken });
-                }
+                // upsert atomique sur (user_id, key)
+                await supabase.from('user_config').upsert(
+                    { key: 'calendar_token', value: { token: newToken } },
+                    { onConflict: 'user_id,key' }
+                );
                 setToken(newToken);
                 setConfirmRegen(false);
             };
@@ -1928,7 +1775,8 @@
         // MAIN APP
         // ============================================
         function App() {
-            const [unlocked, setUnlocked] = useState(false);
+            const { session, loading: authLoading } = window.TaskFlowAuth.useAuthSession();
+            const userId = session?.user?.id || null;
             const [tasks, setTasks] = useState([]);
             const [loading, setLoading] = useState(false);
             const [scope, setScope] = useState(null);
@@ -1956,42 +1804,39 @@
                 return () => document.removeEventListener('mousedown', handler);
             }, []);
 
-            // Load tasks after unlock
+            // Load tasks after login (RLS scopes them to current user automatically)
             useEffect(() => {
-                if (!unlocked) return;
+                if (!userId) { setTasks([]); return; }
                 setLoading(true);
                 supabase.from('tasks').select('*').order('position', { ascending: true })
                     .then(({ data }) => {
                         if (data) setTasks(data.map(t => ({ ...t, subtasks: t.subtasks || [] })));
                         setLoading(false);
                     });
-            }, [unlocked]);
+            }, [userId]);
 
-            // Load custom categories after unlock
+            // Load custom categories after login (jsonb value, no parsing needed)
             useEffect(() => {
-                if (!unlocked) return;
-                supabase.from('app_config').select('value').eq('key', 'custom_categories').single()
+                if (!userId) { setCategories(DEFAULT_CATEGORIES); return; }
+                supabase.from('user_config').select('value').eq('key', 'custom_categories').maybeSingle()
                     .then(({ data }) => {
-                        if (data?.value) {
-                            try { setCategories(typeof data.value === 'string' ? JSON.parse(data.value) : data.value); } catch(e) {}
-                        }
+                        if (data?.value && data.value.pro && data.value.perso) setCategories(data.value);
                     });
-            }, [unlocked]);
+            }, [userId]);
 
             const saveCategories = async (newCats) => {
                 setCategories(newCats);
-                const { data } = await supabase.from('app_config').select('key').eq('key', 'custom_categories').single();
-                if (data) {
-                    await supabase.from('app_config').update({ value: JSON.stringify(newCats) }).eq('key', 'custom_categories');
-                } else {
-                    await supabase.from('app_config').insert({ key: 'custom_categories', value: JSON.stringify(newCats) });
-                }
+                // upsert atomique : 1 round-trip au lieu de 2, pas de race condition
+                await supabase.from('user_config').upsert(
+                    { key: 'custom_categories', value: newCats },
+                    { onConflict: 'user_id,key' }
+                );
                 setToast('Catégories mises à jour !');
             };
 
             // Notifications (max 1 par jour, couvre retard + aujourd'hui, persiste via localStorage)
             useEffect(() => {
-                if (!unlocked || !('Notification' in window)) return;
+                if (!userId || !('Notification' in window)) return;
                 Notification.requestPermission();
                 const check = () => {
                     if (Notification.permission !== 'granted') return;
@@ -2010,7 +1855,7 @@
                 check();
                 const interval = setInterval(check, 3600000);
                 return () => clearInterval(interval);
-            }, [unlocked, tasks]);
+            }, [userId, tasks]);
 
             // ---- Task ops ----
             const isBlocked = useCallback((task) => {
@@ -2239,10 +2084,16 @@
             const weekTasks = scopeTasks.filter(t => !t.done && t.deadline && getDaysUntil(t.deadline) >= 0 && getDaysUntil(t.deadline) <= 7);
             const todayDone = scopeTasks.filter(t => t.done && t.done_at && new Date(t.done_at).toDateString() === new Date().toDateString()).length;
 
-            // ---- PIN screen ----
-            if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
+            // ---- Auth screens (login / signup / reset) ----
+            if (authLoading) return (
+                <div className="loading-screen">
+                    <div className="loader" />
+                    <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>Chargement...</div>
+                </div>
+            );
+            if (!session) return <window.TaskFlowAuth.AuthScreen Logo={TaskFlowLogo} />;
 
-            // ---- Loading ----
+            // ---- Loading tasks after login ----
             if (loading) return (
                 <div className="loading-screen">
                     <div className="loader" />
@@ -2275,8 +2126,12 @@
                                     <button className="settings-item" onClick={() => { setPinModal(true); setSettingsOpen(false); }}>
                                         🔐 Changer le code PIN
                                     </button>
-                                    <button className="settings-item" onClick={() => { setUnlocked(false); setSettingsOpen(false); localStorage.removeItem('lastNotifDate'); }}>
-                                        🚪 Verrouiller
+                                    <button className="settings-item" onClick={async () => {
+                                        setSettingsOpen(false);
+                                        localStorage.removeItem('lastNotifDate');
+                                        await window.TaskFlowAuth.authService.signOut();
+                                    }}>
+                                        🚪 Se déconnecter
                                     </button>
                                 </div>
                             )}
@@ -2468,7 +2323,7 @@
                     )}
 
                     {pinModal && (
-                        <PinChangeModal onClose={() => setPinModal(false)} onChanged={() => setToast('Code PIN modifié !')} />
+                        <window.TaskFlowAuth.PasswordChangeModal onClose={() => setPinModal(false)} onChanged={() => setToast('Code PIN modifié !')} />
                     )}
 
                     {catModal && (
