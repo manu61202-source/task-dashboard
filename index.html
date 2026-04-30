@@ -2020,8 +2020,13 @@
                             const [moved] = newOrder.splice(dragIndex, 1);
                             newOrder.splice(targetIndex, 0, moved);
                             const updates = newOrder.map((t, i) => ({ id: t.id, position: i }));
+                            const prevTasks = tasks;
                             setTasks(prev => prev.map(t => { const u = updates.find(u => u.id === t.id); return u ? { ...t, position: u.position } : t; }));
-                            for (const u of updates) await supabase.from('tasks').update({ position: u.position }).eq('id', u.id);
+                            // Atomique : 1 RPC au lieu de N updates séquentiels
+                            await safeWrite(
+                                supabase.rpc('update_task_positions', { p_updates: updates }),
+                                () => setTasks(prevTasks)
+                            );
                         }
                     }
                     dragRef.current.id = null;
@@ -2034,28 +2039,26 @@
                 document.addEventListener('touchend', onEnd);
             };
 
-            // ---- Mobile Move Up/Down ----
-            const onMoveUp = async (id) => {
+            // ---- Mobile Move Up/Down (swap atomique via RPC) ----
+            const swapPositions = async (id, dir) => {
                 const sorted = sortTasks(filtered);
                 const idx = sorted.findIndex(t => t.id === id);
-                if (idx <= 0) return;
-                const a = sorted[idx], b = sorted[idx - 1];
-                const posA = a.position, posB = b.position;
-                setTasks(prev => prev.map(t => t.id === a.id ? { ...t, position: posB } : t.id === b.id ? { ...t, position: posA } : t));
-                await supabase.from('tasks').update({ position: posB }).eq('id', a.id);
-                await supabase.from('tasks').update({ position: posA }).eq('id', b.id);
+                const j = idx + dir;
+                if (idx === -1 || j < 0 || j >= sorted.length) return;
+                const a = sorted[idx], b = sorted[j];
+                const updates = [
+                    { id: a.id, position: b.position },
+                    { id: b.id, position: a.position },
+                ];
+                const prevTasks = tasks;
+                setTasks(prev => prev.map(t => t.id === a.id ? { ...t, position: b.position } : t.id === b.id ? { ...t, position: a.position } : t));
+                await safeWrite(
+                    supabase.rpc('update_task_positions', { p_updates: updates }),
+                    () => setTasks(prevTasks)
+                );
             };
-
-            const onMoveDown = async (id) => {
-                const sorted = sortTasks(filtered);
-                const idx = sorted.findIndex(t => t.id === id);
-                if (idx === -1 || idx >= sorted.length - 1) return;
-                const a = sorted[idx], b = sorted[idx + 1];
-                const posA = a.position, posB = b.position;
-                setTasks(prev => prev.map(t => t.id === a.id ? { ...t, position: posB } : t.id === b.id ? { ...t, position: posA } : t));
-                await supabase.from('tasks').update({ position: posB }).eq('id', a.id);
-                await supabase.from('tasks').update({ position: posA }).eq('id', b.id);
-            };
+            const onMoveUp = (id) => swapPositions(id, -1);
+            const onMoveDown = (id) => swapPositions(id, 1);
 
             // Push deadline by +1 day
             const pushDeadline = async (id) => {
@@ -2075,7 +2078,7 @@
 
             const toggleFilter = (type, value) => setFilters(prev => ({ ...prev, [type]: prev[type] === value ? null : value }));
 
-            // Reset positions by priority (re-sort)
+            // Reset positions by priority (re-sort, atomique via RPC)
             const resetByDeadlineAndPriority = async () => {
                 const scoped = scope === null
                     ? [...tasks]
@@ -2091,9 +2094,13 @@
                     return priNum(getEffectivePriority(a)) - priNum(getEffectivePriority(b));
                 });
                 const updates = resorted.map((t, i) => ({ id: t.id, position: i }));
+                const prevTasks = tasks;
                 setTasks(prev => prev.map(t => { const u = updates.find(u => u.id === t.id); return u ? { ...t, position: u.position } : t; }));
-                for (const u of updates) await supabase.from('tasks').update({ position: u.position }).eq('id', u.id);
-                setToast('Trié par deadline et priorité !');
+                const ok = await safeWrite(
+                    supabase.rpc('update_task_positions', { p_updates: updates }),
+                    () => setTasks(prevTasks)
+                );
+                if (ok) setToast('Trié par deadline et priorité !');
             };
 
             // ---- Derived ----
