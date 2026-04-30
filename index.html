@@ -1195,10 +1195,14 @@
             const generateToken = async () => {
                 const newToken = crypto.randomUUID();
                 // upsert atomique sur (user_id, key)
-                await supabase.from('user_config').upsert(
+                const { error } = await supabase.from('user_config').upsert(
                     { key: 'calendar_token', value: { token: newToken } },
                     { onConflict: 'user_id,key' }
                 );
+                if (error) {
+                    console.error('Token gen error:', error);
+                    return;
+                }
                 setToken(newToken);
                 setConfirmRegen(false);
             };
@@ -1825,13 +1829,17 @@
             }, [userId]);
 
             const saveCategories = async (newCats) => {
+                const prevCats = categories;
                 setCategories(newCats);
                 // upsert atomique : 1 round-trip au lieu de 2, pas de race condition
-                await supabase.from('user_config').upsert(
-                    { key: 'custom_categories', value: newCats },
-                    { onConflict: 'user_id,key' }
+                const ok = await safeWrite(
+                    supabase.from('user_config').upsert(
+                        { key: 'custom_categories', value: newCats },
+                        { onConflict: 'user_id,key' }
+                    ),
+                    () => setCategories(prevCats)
                 );
-                setToast('Catégories mises à jour !');
+                if (ok) setToast('Catégories mises à jour !');
             };
 
             // Notifications (max 1 par jour, couvre retard + aujourd'hui, persiste via localStorage)
@@ -1857,6 +1865,25 @@
                 return () => clearInterval(interval);
             }, [userId, tasks]);
 
+            // ---- safeWrite : lit error, restaure le state si la write échoue, force logout sur JWT expiré ----
+            const safeWrite = async (promise, rollback) => {
+                try {
+                    const { error } = await promise;
+                    if (!error) return true;
+                    console.error('Supabase write error:', error);
+                    rollback?.();
+                    const isAuth = error.code === 'PGRST301' || /jwt|token|session/i.test(error.message || '');
+                    setToast(isAuth ? 'Session expirée, reconnecte-toi' : 'Erreur, modif non sauvegardée');
+                    if (isAuth) await window.TaskFlowAuth.authService.signOut();
+                    return false;
+                } catch (err) {
+                    console.error('Network/unexpected write error:', err);
+                    rollback?.();
+                    setToast('Connexion perdue, modif non sauvegardée');
+                    return false;
+                }
+            };
+
             // ---- Task ops ----
             const isBlocked = useCallback((task) => {
                 if (!task.blocked_by) return false;
@@ -1865,12 +1892,16 @@
             }, [tasks]);
 
             const toggleDone = async (task) => {
+                const prevTasks = tasks;
                 const newDone = !task.done;
                 const nowIso = new Date().toISOString();
                 const newDoneAt = newDone ? nowIso : null;
                 setTasks(prev => prev.map(t => t.id === task.id ? { ...t, done: newDone, done_at: newDoneAt } : t));
-                await supabase.from('tasks').update({ done: newDone, done_at: newDoneAt, updated_at: nowIso }).eq('id', task.id);
-                if (newDone) setToast('Tâche terminée !');
+                const ok = await safeWrite(
+                    supabase.from('tasks').update({ done: newDone, done_at: newDoneAt }).eq('id', task.id),
+                    () => setTasks(prevTasks)
+                );
+                if (ok && newDone) setToast('Tâche terminée !');
             };
 
             const requestDelete = (id) => setConfirmDelete(id);
@@ -1878,23 +1909,39 @@
                 const id = confirmDelete;
                 if (!id) return;
                 setConfirmDelete(null);
+                const prevTasks = tasks;
                 setTasks(prev => prev.filter(t => t.id !== id));
-                await supabase.from('tasks').delete().eq('id', id);
-                setToast('Tâche supprimée');
+                const ok = await safeWrite(
+                    supabase.from('tasks').delete().eq('id', id),
+                    () => setTasks(prevTasks)
+                );
+                if (ok) setToast('Tâche supprimée');
             };
 
             const handleSubmit = async (formData) => {
                 if (typeof modal === 'number') {
+                    const prevTasks = tasks;
                     setTasks(prev => prev.map(t => t.id === modal ? { ...t, ...formData } : t));
-                    await supabase.from('tasks').update({ ...formData, updated_at: new Date().toISOString() }).eq('id', modal);
-                    setToast('Tâche modifiée');
+                    const ok = await safeWrite(
+                        supabase.from('tasks').update(formData).eq('id', modal),
+                        () => setTasks(prevTasks)
+                    );
+                    if (ok) setToast('Tâche modifiée');
                 } else {
                     const maxPos = tasks.length > 0 ? Math.max(...tasks.map(t => t.position || 0)) + 1 : 0;
                     const newTask = { ...formData, done: false, position: maxPos };
-                    const { data } = await supabase.from('tasks').insert(newTask).select().single();
-                    if (data) {
-                        setTasks(prev => [...prev, { ...data, subtasks: data.subtasks || [] }]);
-                        setToast('Tâche ajoutée !');
+                    try {
+                        const { data, error } = await supabase.from('tasks').insert(newTask).select().single();
+                        if (error) {
+                            console.error('Insert error:', error);
+                            setToast('Impossible de créer la tâche');
+                        } else if (data) {
+                            setTasks(prev => [...prev, { ...data, subtasks: data.subtasks || [] }]);
+                            setToast('Tâche ajoutée !');
+                        }
+                    } catch (err) {
+                        console.error('Network error:', err);
+                        setToast('Connexion perdue, tâche non créée');
                     }
                 }
                 setModal(null);
@@ -1904,9 +1951,13 @@
             const toggleSubtask = async (taskId, subtaskId) => {
                 const task = tasks.find(t => t.id === taskId);
                 if (!task) return;
+                const prevTasks = tasks;
                 const newSubs = (task.subtasks || []).map(s => s.id === subtaskId ? { ...s, done: !s.done } : s);
                 setTasks(prev => prev.map(t => t.id === taskId ? { ...t, subtasks: newSubs } : t));
-                await supabase.from('tasks').update({ subtasks: newSubs, updated_at: new Date().toISOString() }).eq('id', taskId);
+                await safeWrite(
+                    supabase.from('tasks').update({ subtasks: newSubs }).eq('id', taskId),
+                    () => setTasks(prevTasks)
+                );
             };
 
             // ---- Custom Drag & Drop (vertical only, mouse + touch) ----
@@ -2013,10 +2064,13 @@
                 const d = new Date(task.deadline + 'T00:00:00Z');
                 d.setUTCDate(d.getUTCDate() + 1);
                 const newDeadline = d.toISOString().slice(0, 10);
-                const nowIso = new Date().toISOString();
+                const prevTasks = tasks;
                 setTasks(prev => prev.map(t => t.id === id ? { ...t, deadline: newDeadline } : t));
-                await supabase.from('tasks').update({ deadline: newDeadline, updated_at: nowIso }).eq('id', id);
-                setToast('Deadline reportée de 1 jour');
+                const ok = await safeWrite(
+                    supabase.from('tasks').update({ deadline: newDeadline }).eq('id', id),
+                    () => setTasks(prevTasks)
+                );
+                if (ok) setToast('Deadline reportée de 1 jour');
             };
 
             const toggleFilter = (type, value) => setFilters(prev => ({ ...prev, [type]: prev[type] === value ? null : value }));
