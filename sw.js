@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taskflow-v6';
+const CACHE_NAME = 'taskflow-v7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -40,12 +40,19 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Supabase API calls: network only (always need fresh data)
+  // Si offline : on retourne un vrai 503 (pas un faux 200) pour que supabase-js
+  // mette `error` dans la réponse → safeWrite déclenche son rollback côté client.
   if (url.hostname.includes('supabase.co')) {
     event.respondWith(
       fetch(event.request).catch(() => {
-        return new Response(JSON.stringify({ error: 'offline' }), {
-          headers: { 'Content-Type': 'application/json' }
-        });
+        return new Response(
+          JSON.stringify({ message: 'Offline: network unavailable', code: 'OFFLINE' }),
+          {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
       })
     );
     return;
