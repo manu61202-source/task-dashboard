@@ -1600,9 +1600,6 @@
 
                 const onTouchStart = (e) => {
                     if (!isMobile() || isDragging() || task.done) return;
-                    // Notifie toutes les autres cartes qu'on touche celle-ci → si l'une d'elles
-                    // a son swipe ouvert, elle se referme. Comportement type iOS Mail.
-                    window.dispatchEvent(new CustomEvent('taskflow:card-touched', { detail: { taskId: task.id } }));
                     const t = e.touches[0];
                     swipeStateRef.current = {
                         active: true, swiping: false,
@@ -1623,6 +1620,10 @@
                     if (!s.swiping) {
                         if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > ACTIVATION_THRESHOLD) {
                             s.swiping = true;
+                            // Le swipe horizontal est confirmé → notifie les autres cartes pour
+                            // qu'elles se referment si elles étaient ouvertes (iOS Mail style).
+                            // Dispatch ici (et pas sur touchstart) : un simple tap ne ferme rien.
+                            window.dispatchEvent(new CustomEvent('taskflow:card-touched', { detail: { taskId: task.id } }));
                         } else if (Math.abs(dy) > ACTIVATION_THRESHOLD) {
                             s.active = false; // c'est un scroll, on lâche
                             return;
@@ -1648,7 +1649,7 @@
                     //   - parti de fermé (lockedX === 0) → ouvrir demande 50px à gauche
                     //   - parti d'ouvert → fermer demande seulement 30px à droite (geste plus court)
                     const OPEN_THRESHOLD = 50;
-                    const CLOSE_THRESHOLD = 30;
+                    const CLOSE_THRESHOLD = 20;
                     let finalX;
                     if (s.lockedX === 0) {
                         finalX = s.currentX < -OPEN_THRESHOLD ? swipeMax : 0;
