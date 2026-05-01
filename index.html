@@ -1577,6 +1577,21 @@
                 card.style.transform = swipeX !== 0 ? `translateX(${swipeX}px)` : '';
             }, [swipeX]);
 
+            // Si une autre carte est touchée, on referme la nôtre si elle était ouverte
+            // (comportement type iOS Mail : une seule carte ouverte à la fois).
+            useEffect(() => {
+                const handler = (e) => {
+                    if (e.detail?.taskId === task.id) return; // c'est nous qui sommes touchés, pas concernés
+                    if (swipeX !== 0 && !swipeStateRef.current.active) {
+                        swipeStateRef.current.lockedX = 0;
+                        swipeStateRef.current.currentX = 0;
+                        setSwipeX(0); // useEffect ci-dessus appliquera transform: '' avec transition
+                    }
+                };
+                window.addEventListener('taskflow:card-touched', handler);
+                return () => window.removeEventListener('taskflow:card-touched', handler);
+            }, [task.id, swipeX]);
+
             // Touch handlers en natif (non-passive sur touchmove pour pouvoir preventDefault()
             // et bloquer le scroll vertical une fois le swipe horizontal détecté).
             useEffect(() => {
@@ -1585,6 +1600,9 @@
 
                 const onTouchStart = (e) => {
                     if (!isMobile() || isDragging() || task.done) return;
+                    // Notifie toutes les autres cartes qu'on touche celle-ci → si l'une d'elles
+                    // a son swipe ouvert, elle se referme. Comportement type iOS Mail.
+                    window.dispatchEvent(new CustomEvent('taskflow:card-touched', { detail: { taskId: task.id } }));
                     const t = e.touches[0];
                     swipeStateRef.current = {
                         active: true, swiping: false,
