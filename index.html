@@ -316,11 +316,7 @@
             position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
             font-size: 14px; color: var(--text-muted); pointer-events: none;
         }
-        .view-btns-mobile { display: none; }
-        @media (max-width: 500px) {
-            .view-btns-mobile { display: flex; gap: 3px; background: var(--bg-input); border-radius: var(--radius-xs); padding: 3px; flex-shrink: 0; }
-            .view-btns-mobile .view-btn { padding: 6px 10px; font-size: 11px; }
-        }
+        /* (Visibilité de view-btns-mobile/desktop gérée plus bas avec .slide-toggle) */
         .filter-row-compact {
             display: flex; gap: 8px; margin-bottom: 12px; align-items: center;
         }
@@ -362,29 +358,29 @@
         }
         .sort-btn:hover { border-color: var(--accent); color: var(--accent); }
         .sort-btn:active { transform: scale(0.96); }
-        /* Scope toggle (Tout / Pro / Perso) — segmented control animé */
-        .scope-toggle {
+        /* SlideToggle — segmented control réutilisable avec pastille glissante */
+        .slide-toggle {
             position: relative;
             display: flex;
-            margin-bottom: 14px;
             background: var(--bg-input);
             border-radius: var(--radius-sm);
             padding: 4px;
         }
-        /* Pastille glissante : fond blanc qui se déplace entre les options actives */
-        .scope-toggle-slider {
+        .slide-toggle-md { /* taille par défaut */ }
+        .slide-toggle-sm { border-radius: var(--radius-xs); }
+        .slide-toggle-slider {
             position: absolute;
             top: 4px;
+            bottom: 4px;
             left: 4px;
-            width: calc((100% - 8px) / 3);
-            height: calc(100% - 8px);
             background: var(--bg-card);
             border-radius: var(--radius-xs);
             box-shadow: var(--shadow-sm);
             transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
             pointer-events: none;
+            will-change: transform;
         }
-        .scope-toggle-btn {
+        .slide-toggle-btn {
             flex: 1;
             padding: 8px 12px;
             border: none;
@@ -400,25 +396,17 @@
             position: relative;
             z-index: 1;
         }
-        .scope-toggle-btn:hover { color: var(--text); }
-        .scope-toggle-btn.active { color: var(--accent); }
-        .scope-toggle-btn:active { transform: scale(0.97); }
+        .slide-toggle-sm .slide-toggle-btn { padding: 6px 12px; font-size: 12px; }
+        .slide-toggle-btn:hover { color: var(--text); }
+        .slide-toggle-btn.active { color: var(--accent); }
+        /* scope toggle en haut : un peu de marge */
+        .scope-toggle-wrap { margin-bottom: 14px; }
         .view-toggle-row .left-section { display: flex; align-items: center; gap: 0; }
-        .view-btns { display: flex; gap: 4px; background: var(--bg-input); border-radius: var(--radius-xs); padding: 3px; }
-        @media (max-width: 500px) { .view-btns.view-btns-desktop { display: none !important; } }
-        .view-btn {
-            padding: 6px 14px;
-            border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all 0.15s;
-            background: transparent;
-            color: var(--text-secondary);
-        }
-        .view-btn.active { background: var(--bg-card); color: var(--text); box-shadow: var(--shadow-sm); }
+        /* Variantes responsive du SlideToggle pour le switch Liste/Calendrier */
+        .slide-toggle.view-btns-desktop { flex-shrink: 0; }
+        @media (max-width: 500px) { .slide-toggle.view-btns-desktop { display: none !important; } }
+        .slide-toggle.view-btns-mobile { display: none; flex-shrink: 0; }
+        @media (max-width: 500px) { .slide-toggle.view-btns-mobile { display: flex; } }
 
         /* Task card */
         .task-card {
@@ -862,13 +850,8 @@
         .pin-change-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,99,10,0.08); }
 
         /* Category manager */
-        .cat-scope-toggle { display: flex; gap: 4px; background: var(--bg-input); border-radius: 8px; padding: 3px; margin-bottom: 16px; }
-        .cat-scope-btn {
-            flex: 1; padding: 8px 12px; border: none; border-radius: 6px; font-size: 13px;
-            font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.2s;
-            background: transparent; color: var(--text-secondary);
-        }
-        .cat-scope-btn.active { background: var(--bg-card); color: var(--text); box-shadow: var(--shadow-sm); }
+        /* Wrap du SlideToggle dans la modal Catégories */
+        .slide-toggle.cat-scope-toggle-wrap { margin-bottom: 16px; }
         .cat-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
         .cat-item {
             display: flex; align-items: center; gap: 10px; padding: 10px 12px;
@@ -1080,6 +1063,39 @@
                 <span style={{ fontSize: size * 0.75, fontWeight: 800, letterSpacing: -1.5, background: 'linear-gradient(135deg, #E8630A, #F59E0B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>TaskFlow</span>
             </div>
         );
+
+        // ============================================
+        // SLIDE TOGGLE — segmented control avec pastille glissante (réutilisable)
+        // ============================================
+        // options : [{ key, label }] — la `key` peut être null/string/n'importe quoi (égalité strict)
+        // value   : la valeur active (matchée par === avec opt.key)
+        // onChange(newKey) : callback au clic
+        // size    : 'md' (default) | 'sm' (compact)
+        const SlideToggle = ({ options, value, onChange, size = 'md', className = '' }) => {
+            const idx = Math.max(0, options.findIndex(o => o.key === value));
+            const widthPct = 100 / options.length;
+            return (
+                <div className={`slide-toggle slide-toggle-${size} ${className}`}>
+                    <div
+                        className="slide-toggle-slider"
+                        style={{
+                            width: `calc((100% - 8px) / ${options.length})`,
+                            transform: `translateX(${idx * 100}%)`,
+                        }}
+                    />
+                    {options.map(opt => (
+                        <button
+                            key={String(opt.key ?? '__null__')}
+                            type="button"
+                            className={`slide-toggle-btn ${value === opt.key ? 'active' : ''}`}
+                            onClick={() => onChange(opt.key)}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            );
+        };
 
         // PinScreen + PinChangeModal extraits dans auth.js (window.TaskFlowAuth)
 
@@ -1421,10 +1437,15 @@
                         <div className="modal-handle" />
                         <h2>Gérer les catégories</h2>
 
-                        <div className="cat-scope-toggle">
-                            <button className={`cat-scope-btn ${scope === 'pro' ? 'active' : ''}`} onClick={() => setScope('pro')}>💼 Pro</button>
-                            <button className={`cat-scope-btn ${scope === 'perso' ? 'active' : ''}`} onClick={() => setScope('perso')}>🏠 Perso</button>
-                        </div>
+                        <SlideToggle
+                            className="cat-scope-toggle-wrap"
+                            options={[
+                                { key: 'pro',   label: '💼 Pro' },
+                                { key: 'perso', label: '🏠 Perso' },
+                            ]}
+                            value={scope}
+                            onChange={setScope}
+                        />
 
                         <div className="cat-list">
                             {cats[scope].length === 0 && <div className="cat-empty">Aucune catégorie</div>}
@@ -2274,29 +2295,16 @@
                         </div>
                     </div>
 
-                    {(() => {
-                        const scopeOptions = [
-                            { key: null, label: '🌐 Tout' },
-                            { key: 'pro', label: '💼 Pro' },
+                    <SlideToggle
+                        className="scope-toggle-wrap"
+                        options={[
+                            { key: null,    label: '🌐 Tout' },
+                            { key: 'pro',   label: '💼 Pro' },
                             { key: 'perso', label: '🏠 Perso' },
-                        ];
-                        const activeIdx = scopeOptions.findIndex(o => o.key === scope);
-                        return (
-                            <div className="scope-toggle">
-                                <div className="scope-toggle-slider" style={{ transform: `translateX(${activeIdx * 100}%)` }} />
-                                {scopeOptions.map(opt => (
-                                    <button
-                                        key={opt.key ?? 'all'}
-                                        className={`scope-toggle-btn ${scope === opt.key ? 'active' : ''}`}
-                                        onClick={() => { setScope(opt.key); setFilters({ category: null, priority: null }); }}
-                                        type="button"
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
-                        );
-                    })()}
+                        ]}
+                        value={scope}
+                        onChange={(k) => { setScope(k); setFilters({ category: null, priority: null }); }}
+                    />
 
                     <div className="stats-strip">
                         <div className="stat-card stat-overdue">
@@ -2326,10 +2334,16 @@
                                 placeholder="Rechercher une tâche..."
                             />
                         </div>
-                        <div className="view-btns-mobile">
-                            <button className={`view-btn ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}>Liste</button>
-                            <button className={`view-btn ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}>Cal.</button>
-                        </div>
+                        <SlideToggle
+                            className="view-btns-mobile"
+                            size="sm"
+                            options={[
+                                { key: 'list',     label: 'Liste' },
+                                { key: 'calendar', label: 'Cal.' },
+                            ]}
+                            value={view}
+                            onChange={setView}
+                        />
                     </div>
 
                     <div className="filter-row-compact">
@@ -2371,10 +2385,16 @@
                                 </React.Fragment>
                             )}
                         </div>
-                        <div className="view-btns view-btns-desktop">
-                            <button className={`view-btn ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}>Liste</button>
-                            <button className={`view-btn ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}>Calendrier</button>
-                        </div>
+                        <SlideToggle
+                            className="view-btns-desktop"
+                            size="sm"
+                            options={[
+                                { key: 'list',     label: 'Liste' },
+                                { key: 'calendar', label: 'Calendrier' },
+                            ]}
+                            value={view}
+                            onChange={setView}
+                        />
                     </div>
 
                     {view === 'list' ? (() => {
