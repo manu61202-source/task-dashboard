@@ -362,22 +362,46 @@
         }
         .sort-btn:hover { border-color: var(--accent); color: var(--accent); }
         .sort-btn:active { transform: scale(0.96); }
-        /* Scope toggle (Tout / Pro / Perso) — segmented control en haut de page */
+        /* Scope toggle (Tout / Pro / Perso) — segmented control animé */
         .scope-toggle {
-            display: flex; gap: 4px; margin-bottom: 14px;
-            background: var(--bg-input); border-radius: var(--radius-sm); padding: 4px;
+            position: relative;
+            display: flex;
+            margin-bottom: 14px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            padding: 4px;
+        }
+        /* Pastille glissante : fond blanc qui se déplace entre les options actives */
+        .scope-toggle-slider {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: calc((100% - 8px) / 3);
+            height: calc(100% - 8px);
+            background: var(--bg-card);
+            border-radius: var(--radius-xs);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
         }
         .scope-toggle-btn {
-            flex: 1; padding: 8px 12px; border: none; border-radius: var(--radius-xs);
-            font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
-            background: transparent; color: var(--text-secondary); transition: all 0.15s;
-            white-space: nowrap; outline: none;
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            background: transparent;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+            white-space: nowrap;
+            outline: none;
+            position: relative;
+            z-index: 1;
         }
         .scope-toggle-btn:hover { color: var(--text); }
-        .scope-toggle-btn.active {
-            background: var(--bg-card); color: var(--accent);
-            box-shadow: var(--shadow-sm);
-        }
+        .scope-toggle-btn.active { color: var(--accent); }
         .scope-toggle-btn:active { transform: scale(0.97); }
         .view-toggle-row .left-section { display: flex; align-items: center; gap: 0; }
         .view-btns { display: flex; gap: 4px; background: var(--bg-input); border-radius: var(--radius-xs); padding: 3px; }
@@ -2250,22 +2274,29 @@
                         </div>
                     </div>
 
-                    <div className="scope-toggle">
-                        {[
+                    {(() => {
+                        const scopeOptions = [
                             { key: null, label: '🌐 Tout' },
                             { key: 'pro', label: '💼 Pro' },
                             { key: 'perso', label: '🏠 Perso' },
-                        ].map(opt => (
-                            <button
-                                key={opt.key ?? 'all'}
-                                className={`scope-toggle-btn ${scope === opt.key ? 'active' : ''}`}
-                                onClick={() => { setScope(opt.key); setFilters({ category: null, priority: null }); }}
-                                type="button"
-                            >
-                                {opt.label}
-                            </button>
-                        ))}
-                    </div>
+                        ];
+                        const activeIdx = scopeOptions.findIndex(o => o.key === scope);
+                        return (
+                            <div className="scope-toggle">
+                                <div className="scope-toggle-slider" style={{ transform: `translateX(${activeIdx * 100}%)` }} />
+                                {scopeOptions.map(opt => (
+                                    <button
+                                        key={opt.key ?? 'all'}
+                                        className={`scope-toggle-btn ${scope === opt.key ? 'active' : ''}`}
+                                        onClick={() => { setScope(opt.key); setFilters({ category: null, priority: null }); }}
+                                        type="button"
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        );
+                    })()}
 
                     <div className="stats-strip">
                         <div className="stat-card stat-overdue">
