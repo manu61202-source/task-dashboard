@@ -1626,8 +1626,18 @@
                     if (!s.active) return;
                     s.active = false;
                     s.swiping = false;
-                    // Snap : si on a swipé > 50px, on ouvre les actions, sinon on referme
-                    const finalX = s.currentX < -50 ? swipeMax : 0;
+                    // Snap directionnel selon l'intention :
+                    //   - parti de fermé (lockedX === 0) → ouvrir demande 50px à gauche
+                    //   - parti d'ouvert → fermer demande seulement 30px à droite (geste plus court)
+                    const OPEN_THRESHOLD = 50;
+                    const CLOSE_THRESHOLD = 30;
+                    let finalX;
+                    if (s.lockedX === 0) {
+                        finalX = s.currentX < -OPEN_THRESHOLD ? swipeMax : 0;
+                    } else {
+                        const movedRight = s.currentX - s.lockedX;
+                        finalX = movedRight > CLOSE_THRESHOLD ? 0 : swipeMax;
+                    }
                     card.style.transition = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)';
                     card.style.transform = finalX !== 0 ? `translateX(${finalX}px)` : '';
                     if (finalX !== swipeX) setSwipeX(finalX); // sync React state pour afficher/cacher les boutons
@@ -1653,7 +1663,10 @@
 
             return (
               <div className="swipe-container" data-task-id={task.id}>
-                {!task.done && swipeX !== 0 && (
+                {/* Boutons rendus en permanence (sur mobile uniquement via CSS), cachés derrière
+                    la carte par overflow:hidden + z-index. Au fur et à mesure du swipe, ils se
+                    dévoilent progressivement (et pas d'un coup à la fin). */}
+                {!task.done && (
                   <div className="swipe-actions">
                     {canPush && (
                         <button className="swipe-action swipe-push" onClick={() => { setSwipeX(0); onPushDeadline(task.id); }}>
