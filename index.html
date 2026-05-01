@@ -362,17 +362,23 @@
         }
         .sort-btn:hover { border-color: var(--accent); color: var(--accent); }
         .sort-btn:active { transform: scale(0.96); }
-        .scope-select {
-            padding: 5px 24px 5px 10px; border: 1.5px solid var(--border); border-radius: 20px;
-            font-size: 11px; font-weight: 600; font-family: inherit; cursor: pointer;
-            background: var(--bg-card); color: var(--text-secondary); transition: all 0.15s;
-            white-space: nowrap; margin-left: 8px; outline: none;
-            appearance: none; -webkit-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23ACACAA'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 10px center;
+        /* Scope toggle (Tout / Pro / Perso) — segmented control en haut de page */
+        .scope-toggle {
+            display: flex; gap: 4px; margin-bottom: 14px;
+            background: var(--bg-input); border-radius: var(--radius-sm); padding: 4px;
         }
-        .scope-select:hover { border-color: var(--accent); color: var(--accent); }
-        .scope-select.has-value { background-color: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+        .scope-toggle-btn {
+            flex: 1; padding: 8px 12px; border: none; border-radius: var(--radius-xs);
+            font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+            background: transparent; color: var(--text-secondary); transition: all 0.15s;
+            white-space: nowrap; outline: none;
+        }
+        .scope-toggle-btn:hover { color: var(--text); }
+        .scope-toggle-btn.active {
+            background: var(--bg-card); color: var(--accent);
+            box-shadow: var(--shadow-sm);
+        }
+        .scope-toggle-btn:active { transform: scale(0.97); }
         .view-toggle-row .left-section { display: flex; align-items: center; gap: 0; }
         .view-btns { display: flex; gap: 4px; background: var(--bg-input); border-radius: var(--radius-xs); padding: 3px; }
         @media (max-width: 500px) { .view-btns.view-btns-desktop { display: none !important; } }
@@ -996,12 +1002,10 @@
             return `Dans ${d}j`;
         }
 
+        // La priorité user-set ne change jamais automatiquement, même si la tâche est en retard
+        // ou due aujourd'hui. L'urgence visuelle de la deadline est déjà signalée par la bordure
+        // rouge sur la carte + le tag deadline coloré.
         function getEffectivePriority(task) {
-            if (!task.deadline) return task.priority;
-            const d = getDaysUntil(task.deadline);
-            const order = { critique: 0, urgent: 1, moyen: 2, faible: 3 };
-            if (d < 0) return order.critique < order[task.priority] ? 'critique' : task.priority;
-            if (d === 0) return order.urgent < order[task.priority] ? 'urgent' : task.priority;
             return task.priority;
         }
 
@@ -1494,7 +1498,6 @@
             const taskScope = getTaskScope(task.category, categories);
             const effPri = getEffectivePriority(task);
             const pri = PRIORITIES[effPri];
-            const escalated = effPri !== task.priority;
             const blocked = isBlocked(task);
             const overdue = task.deadline && getDaysUntil(task.deadline) < 0 && !task.done;
             const dueToday = task.deadline && getDaysUntil(task.deadline) === 0;
@@ -1591,7 +1594,7 @@
                         <div className="task-tags">
                             <span className="tag tag-category">{cat.emoji} {cat.label}</span>
                             <span className="tag" style={{ background: pri.bg, color: pri.color }}>
-                                {pri.emoji} {pri.label}{escalated ? ' ⬆' : ''}
+                                {pri.emoji} {pri.label}
                             </span>
                             {task.deadline && (
                                 <span className="tag" style={{
@@ -2247,6 +2250,23 @@
                         </div>
                     </div>
 
+                    <div className="scope-toggle">
+                        {[
+                            { key: null, label: '🌐 Tout' },
+                            { key: 'pro', label: '💼 Pro' },
+                            { key: 'perso', label: '🏠 Perso' },
+                        ].map(opt => (
+                            <button
+                                key={opt.key ?? 'all'}
+                                className={`scope-toggle-btn ${scope === opt.key ? 'active' : ''}`}
+                                onClick={() => { setScope(opt.key); setFilters({ category: null, priority: null }); }}
+                                type="button"
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+
                     <div className="stats-strip">
                         <div className="stat-card stat-overdue">
                             <div className="stat-num">{overdueTasks.length}</div>
@@ -2317,15 +2337,6 @@
                                         onClick={() => { setShowAllDone(!showAllDone); setShowDoneCount(showAllDone ? 3 : 10); }}
                                         style={showAllDone ? { background: 'var(--done-color)', color: 'white', borderColor: 'var(--done-color)' } : {}}
                                     >✅ Faites</button>
-                                    <select className={`scope-select ${scope ? 'has-value' : ''}`}
-                                        value={scope || ''}
-                                        onChange={e => { const v = e.target.value || null; setScope(v); setFilters({ category: null, priority: null }); }}
-                                        title="Filtrer par scope"
-                                    >
-                                        <option value="">🌐 Tout</option>
-                                        <option value="pro">💼 Pro</option>
-                                        <option value="perso">🏠 Perso</option>
-                                    </select>
                                 </React.Fragment>
                             )}
                         </div>
