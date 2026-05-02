@@ -1111,7 +1111,12 @@
             const [detail, setDetail] = useState(task?.detail || '');
             const [category, setCategory] = useState(task?.category || '');
             const [priority, setPriority] = useState(task?.priority || '');
-            const [deadline, setDeadline] = useState(task?.deadline || '');
+            // Date du jour (locale, pas UTC) au format YYYY-MM-DD : default deadline à la création.
+            const todayLocal = (() => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            })();
+            const [deadline, setDeadline] = useState(task?.deadline || (task ? '' : todayLocal));
             const [blockedBy, setBlockedBy] = useState(task?.blocked_by?.toString() || '');
             const [subtasks, setSubtasks] = useState(task?.subtasks || []);
             const newSubRef = useRef(null);
