@@ -1128,6 +1128,17 @@
             };
             const updateSubtask = (id, updates) => setSubtasks(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
             const removeSubtask = (id) => setSubtasks(prev => prev.filter(s => s.id !== id));
+            // Réordonnance via flèches ▲▼ (pareil que le gestionnaire de catégories)
+            const moveSubtask = (id, dir) => {
+                setSubtasks(prev => {
+                    const list = [...prev];
+                    const idx = list.findIndex(s => s.id === id);
+                    const j = idx + dir;
+                    if (idx === -1 || j < 0 || j >= list.length) return prev;
+                    [list[idx], list[j]] = [list[j], list[idx]];
+                    return list;
+                });
+            };
 
             const handle = (e) => {
                 e.preventDefault();
@@ -1209,6 +1220,8 @@
                                                 placeholder="Sous-tâche..."
                                                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubtask(); } }}
                                             />
+                                            <button type="button" className="cat-move-btn" onClick={() => moveSubtask(st.id, -1)} disabled={i === 0} title="Monter">▲</button>
+                                            <button type="button" className="cat-move-btn" onClick={() => moveSubtask(st.id, 1)} disabled={i === subtasks.length - 1} title="Descendre">▼</button>
                                             <button type="button" className="remove-st" onClick={() => removeSubtask(st.id)}>×</button>
                                         </div>
                                     ))}
