@@ -57,7 +57,11 @@
             color: var(--text);
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+            /* Désactive le flash gris/bleu natif au tap sur mobile (iOS/Android).
+               Les feedback :active personnalisés restent actifs. */
+            -webkit-tap-highlight-color: transparent;
         }
+        * { -webkit-tap-highlight-color: transparent; }
 
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -653,6 +657,13 @@
         .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
         @media (min-width: 500px) { .modal-handle { display: none; } }
         .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 24px; color: var(--text); letter-spacing: -0.3px; }
+        /* Header de la modal Tâche : titre à gauche, toggle Pro/Perso à droite (aligné) */
+        .modal-title-row {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; margin-bottom: 24px;
+        }
+        .modal-title-row h2 { margin-bottom: 0; }
+        .modal-title-row .slide-toggle.modal-scope-toggle { flex-shrink: 0; }
         .form-group { margin-bottom: 16px; }
         .form-label { display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
         .form-input {
@@ -1106,11 +1117,15 @@
         // ============================================
         // TASK MODAL
         // ============================================
-        function TaskModal({ task, tasks, onSubmit, onClose, categories }) {
+        function TaskModal({ task, tasks, onSubmit, onClose, categories, defaultScope }) {
             const [text, setText] = useState(task?.text || '');
             const [detail, setDetail] = useState(task?.detail || '');
             const [category, setCategory] = useState(task?.category || '');
             const [priority, setPriority] = useState(task?.priority || '');
+            // Scope (Pro/Perso) du modal : derive de la tâche en édition, sinon scope actuel de l'app, sinon 'pro'
+            const [modalScope, setModalScope] = useState(
+                task?.category ? getTaskScope(task.category, categories) : (defaultScope || 'pro')
+            );
             // Date du jour (locale, pas UTC) au format YYYY-MM-DD : default deadline à la création.
             const todayLocal = (() => {
                 const d = new Date();
@@ -1158,7 +1173,25 @@
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
                         <div className="modal-handle" />
-                        <h2>{task ? 'Modifier la tâche' : 'Nouvelle tâche'}</h2>
+                        <div className="modal-title-row">
+                            <h2>{task ? 'Modifier la tâche' : 'Nouvelle tâche'}</h2>
+                            <SlideToggle
+                                size="sm"
+                                className="modal-scope-toggle"
+                                options={[
+                                    { key: 'pro',   label: '💼 Pro' },
+                                    { key: 'perso', label: '🏠 Perso' },
+                                ]}
+                                value={modalScope}
+                                onChange={(newScope) => {
+                                    setModalScope(newScope);
+                                    // Reset la catégorie si elle n'appartient pas au nouveau scope
+                                    if (category && getTaskScope(category, categories) !== newScope) {
+                                        setCategory('');
+                                    }
+                                }}
+                            />
+                        </div>
                         <form onSubmit={handle}>
                             <div className="form-group">
                                 <label className="form-label">Tâche *</label>
@@ -1173,12 +1206,9 @@
                                     <label className="form-label">Catégorie *</label>
                                     <select className="form-input" value={category} onChange={e => setCategory(e.target.value)} required>
                                         <option value="">Choisir...</option>
-                                        <optgroup label="💼 Professionnel">
-                                            {categories.pro.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-                                        </optgroup>
-                                        <optgroup label="🏠 Personnel">
-                                            {categories.perso.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-                                        </optgroup>
+                                        {categories[modalScope].map(c => (
+                                            <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="form-group">
@@ -2599,6 +2629,7 @@
                             task={typeof modal === 'number' ? tasks.find(t => t.id === modal) : null}
                             tasks={tasks} onSubmit={handleSubmit} onClose={() => setModal(null)}
                             categories={categories}
+                            defaultScope={scope || 'pro'}
                         />
                     )}
 
