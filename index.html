@@ -640,6 +640,10 @@
             position: fixed; inset: 0; background: rgba(0,0,0,0.35);
             backdrop-filter: blur(4px); display: flex; align-items: flex-end;
             justify-content: center; z-index: 200; animation: overlayIn 0.2s ease-out;
+            /* overscroll-behavior + touch-action : empêche le scroll de remonter au body si on
+               touche l'overlay et qu'on glisse, et coupe le rubber-band iOS au-delà du contenu. */
+            overscroll-behavior: contain;
+            touch-action: none;
         }
         @media (min-width: 500px) { .modal-overlay { align-items: center; } }
         .modal {
@@ -647,6 +651,9 @@
             width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
             box-shadow: var(--shadow-lg); animation: modalIn 0.3s ease-out;
             box-sizing: border-box; display: flex; flex-direction: column;
+            /* Permet le scroll dans la modal (touch-action) mais empêche le débordement vers le body */
+            touch-action: pan-y;
+            overscroll-behavior: contain;
         }
         .modal form, .modal-scroll-content { flex: 1; overflow-y: auto; min-height: 0; }
         .modal-btns.sticky-bottom { flex-shrink: 0; position: sticky; bottom: 0; background: var(--bg-card); padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--bg-input); }
@@ -1994,6 +2001,33 @@
                 document.addEventListener('mousedown', handler);
                 return () => document.removeEventListener('mousedown', handler);
             }, []);
+
+            // Verrouille le scroll du body quand une modal/popup est ouverte (mobile : empêche le
+            // background de bouger, et le rubber-band scroll iOS). Approche position:fixed pour
+            // pleinement bloquer iOS, avec restauration de la position de scroll au close.
+            const anyModalOpen = modal !== null || pinModal || catModal || calendarModal || confirmDelete !== null || settingsOpen;
+            useEffect(() => {
+                if (!anyModalOpen) return;
+                const scrollY = window.scrollY;
+                const body = document.body;
+                const prev = {
+                    overflow: body.style.overflow,
+                    position: body.style.position,
+                    top: body.style.top,
+                    width: body.style.width,
+                };
+                body.style.position = 'fixed';
+                body.style.top = `-${scrollY}px`;
+                body.style.width = '100%';
+                body.style.overflow = 'hidden';
+                return () => {
+                    body.style.position = prev.position;
+                    body.style.top = prev.top;
+                    body.style.width = prev.width;
+                    body.style.overflow = prev.overflow;
+                    window.scrollTo(0, scrollY);
+                };
+            }, [anyModalOpen]);
 
             // Load tasks after login (RLS scopes them to current user automatically)
             useEffect(() => {
