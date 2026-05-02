@@ -122,6 +122,10 @@
         useEffect(() => {
             const h = (e) => {
                 if (mode === 'reset') return;
+                // Si l'utilisateur tape dans un champ texte (email), ne pas intercepter — sinon
+                // les chiffres saisis dans l'email s'ajoutent aussi au PIN.
+                const tag = e.target?.tagName;
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) return;
                 if (e.key >= '0' && e.key <= '9') handleKey(e.key);
                 if (e.key === 'Backspace') handleBackspace();
             };
@@ -219,7 +223,7 @@
                         value={email}
                         onChange={e => { setEmail(e.target.value); setError(''); }}
                         className="form-input"
-                        style={{ marginBottom: 18 }}
+                        style={{ marginBottom: 32 }}
                         disabled={busy}
                     />
 
