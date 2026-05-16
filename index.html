@@ -384,6 +384,15 @@
             pointer-events: none;
             will-change: transform;
         }
+        /* Mode proportionnel : boutons à la largeur de leur texte, pastille mesurée en JS.
+           left:0 car offsetLeft du bouton inclut déjà le padding 4px du conteneur. */
+        .slide-toggle-fit .slide-toggle-btn { flex: 0 0 auto; }
+        .slide-toggle-fit .slide-toggle-slider {
+            left: 0;
+            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                        width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.15s ease;
+        }
         .slide-toggle-btn {
             flex: 1;
             padding: 8px 12px;
@@ -1093,21 +1102,33 @@
         // value   : la valeur active (matchée par === avec opt.key)
         // onChange(newKey) : callback au clic
         // size    : 'md' (default) | 'sm' (compact)
-        const SlideToggle = ({ options, value, onChange, size = 'md', className = '' }) => {
+        const SlideToggle = ({ options, value, onChange, size = 'md', className = '', proportional = false }) => {
             const idx = Math.max(0, options.findIndex(o => o.key === value));
-            const widthPct = 100 / options.length;
+            const btnRefs = useRef([]);
+            const [measured, setMeasured] = useState(null);
+
+            // Mode proportionnel : la pastille mesure la vraie largeur/position du bouton actif
+            // (au lieu de 100/N), pour que des libellés de longueurs différentes (ex: Liste vs
+            // Calendrier) ne soient pas forcés à 50/50.
+            React.useLayoutEffect(() => {
+                if (!proportional) return;
+                const b = btnRefs.current[idx];
+                if (b) setMeasured({ left: b.offsetLeft, width: b.offsetWidth });
+            }, [proportional, idx, options]);
+
+            const sliderStyle = proportional
+                ? (measured
+                    ? { width: measured.width + 'px', transform: `translateX(${measured.left}px)` }
+                    : { opacity: 0 })
+                : { width: `calc((100% - 8px) / ${options.length})`, transform: `translateX(${idx * 100}%)` };
+
             return (
-                <div className={`slide-toggle slide-toggle-${size} ${className}`}>
-                    <div
-                        className="slide-toggle-slider"
-                        style={{
-                            width: `calc((100% - 8px) / ${options.length})`,
-                            transform: `translateX(${idx * 100}%)`,
-                        }}
-                    />
-                    {options.map(opt => (
+                <div className={`slide-toggle slide-toggle-${size} ${proportional ? 'slide-toggle-fit' : ''} ${className}`}>
+                    <div className="slide-toggle-slider" style={sliderStyle} />
+                    {options.map((opt, i) => (
                         <button
                             key={String(opt.key ?? '__null__')}
+                            ref={el => { btnRefs.current[i] = el; }}
                             type="button"
                             className={`slide-toggle-btn ${value === opt.key ? 'active' : ''}`}
                             onClick={() => onChange(opt.key)}
@@ -2510,6 +2531,7 @@
                         <SlideToggle
                             className="view-btns-mobile"
                             size="sm"
+                            proportional
                             options={[
                                 { key: 'list',     label: 'Liste' },
                                 { key: 'calendar', label: 'Cal.' },
@@ -2561,6 +2583,7 @@
                         <SlideToggle
                             className="view-btns-desktop"
                             size="sm"
+                            proportional
                             options={[
                                 { key: 'list',     label: 'Liste' },
                                 { key: 'calendar', label: 'Calendrier' },
