@@ -309,7 +309,7 @@
             position: relative; flex: 1; min-width: 0;
         }
         .search-bar input {
-            width: 100%; padding: 10px 14px 10px 36px; border: 1.5px solid var(--border);
+            width: 100%; padding: 10px 36px 10px 36px; border: 1.5px solid var(--border);
             border-radius: var(--radius-sm); font-size: 13px; font-family: inherit;
             color: var(--text); background: var(--bg-input); outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
@@ -320,6 +320,16 @@
             position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
             font-size: 14px; color: var(--text-muted); pointer-events: none;
         }
+        .search-clear {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            width: 20px; height: 20px; border: none; border-radius: 50%;
+            background: var(--text-muted); color: var(--bg-card);
+            font-size: 12px; line-height: 1; cursor: pointer; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s;
+        }
+        .search-clear:hover { background: var(--text-secondary); }
+        .search-clear:active { transform: translateY(-50%) scale(0.9); }
         /* (Visibilité de view-btns-mobile/desktop gérée plus bas avec .slide-toggle) */
         .filter-row-compact {
             display: flex; gap: 8px; margin-bottom: 12px; align-items: center;
@@ -2527,6 +2537,15 @@
                                 onChange={e => setSearchQuery(e.target.value)}
                                 placeholder="Rechercher une tâche..."
                             />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    className="search-clear"
+                                    onClick={() => setSearchQuery('')}
+                                    title="Effacer la recherche"
+                                    aria-label="Effacer la recherche"
+                                >×</button>
+                            )}
                         </div>
                         <SlideToggle
                             className="view-btns-mobile"
