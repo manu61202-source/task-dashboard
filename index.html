@@ -739,6 +739,8 @@
         }
         .btn-submit:hover { background: var(--accent-hover); }
         .btn-submit:active { transform: scale(0.98); }
+        .btn-submit:disabled { opacity: 0.6; cursor: progress; transform: none; }
+        .btn-cancel:disabled { opacity: 0.5; cursor: default; }
 
         /* Calendar */
         .calendar { animation: fadeIn 0.3s ease-out; }
@@ -1193,16 +1195,30 @@
                 });
             };
 
-            const handle = (e) => {
+            const [submitting, setSubmitting] = useState(false);
+            const submittingRef = useRef(false); // garde synchrone : bloque le double-clic même
+                                                 // avant le re-render qui désactive le bouton
+
+            const handle = async (e) => {
                 e.preventDefault();
+                if (submittingRef.current) return;
                 if (!text || !category || !priority) return;
-                onSubmit({
-                    text, detail, category, priority,
-                    deadline: deadline || null,
-                    blocked_by: blockedBy ? parseInt(blockedBy) : null,
-                    subtasks: subtasks.filter(s => s.text.trim() !== ''),
-                    scope: getTaskScope(category, categories)
-                });
+                submittingRef.current = true;
+                setSubmitting(true);
+                try {
+                    await onSubmit({
+                        text, detail, category, priority,
+                        deadline: deadline || null,
+                        blocked_by: blockedBy ? parseInt(blockedBy) : null,
+                        subtasks: subtasks.filter(s => s.text.trim() !== ''),
+                        scope: getTaskScope(category, categories)
+                    });
+                } finally {
+                    // Si onSubmit a fermé la modal, le composant est démonté (no-op inoffensif).
+                    // Sinon (erreur réseau qui laisse la modal ouverte), on réactive le bouton.
+                    submittingRef.current = false;
+                    setSubmitting(false);
+                }
             };
 
             const blockerTasks = tasks.filter(t => !t.done && t.id !== task?.id);
@@ -1297,8 +1313,12 @@
                                 </div>
                             </div>
                             <div className="modal-btns sticky-bottom">
-                                <button type="button" className="btn-cancel" onClick={onClose}>Annuler</button>
-                                <button type="submit" className="btn-submit">{task ? 'Enregistrer' : 'Ajouter'}</button>
+                                <button type="button" className="btn-cancel" onClick={onClose} disabled={submitting}>Annuler</button>
+                                <button type="submit" className="btn-submit" disabled={submitting}>
+                                    {submitting
+                                        ? (task ? 'Enregistrement...' : 'Ajout...')
+                                        : (task ? 'Enregistrer' : 'Ajouter')}
+                                </button>
                             </div>
                         </form>
                     </div>
