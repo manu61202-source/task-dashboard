@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taskflow-v22';
+const CACHE_NAME = 'taskflow-v23';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -72,7 +72,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Everything else: stale-while-revalidate (serve cached, update in background)
+  // App shell (navigation, index.html, auth.js) : NETWORK-FIRST.
+  // On sert toujours la dernière version quand le réseau est dispo, et le cache
+  // ne sert que de fallback offline. Fini le "il faut refresh 2 fois" après un deploy.
+  const isAppShell =
+    event.request.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('/index.html') ||
+    url.pathname.endsWith('/auth.js');
+  if (isAppShell) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((c) => c || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Everything else (icons, etc.): stale-while-revalidate (serve cached, update in background)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request).then((response) => {
